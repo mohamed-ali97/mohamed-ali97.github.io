@@ -383,7 +383,7 @@ export default function Drive3D({ projects, t }) {
       const st = { x: 0, z: 0, h: 0, v: 0 }
       let thr = 0, steerS = 0, camH = 0, axS = 0
       const camPos = new THREE.Vector3(0, 5, -9); let occK = 1
-      const place = (x, z, h) => { st.x = x; st.z = z; st.h = h; st.v = 0; thr = 0; steerS = 0; camH = h; axS = 0 }
+      const place = (x, z, h) => { st.x = x; st.z = z; st.h = h; st.v = 0; thr = 0; steerS = 0; camH = h; axS = 0; camPos.set(x - Math.sin(h) * 9, 4.4, z - Math.cos(h) * 9); occK = 1 }
       // jump next to a station on the road, facing it
       const gotoStation = (i) => {
         const [sx, sz] = stationPos(i), d = Math.hypot(sx, sz), px = sx * (1 - 7 / d), pz = sz * (1 - 7 / d)
@@ -621,7 +621,7 @@ export default function Drive3D({ projects, t }) {
         <div className="sr-only" aria-live="polite">{near >= 0 ? t.nearAt + ' ' + t.projects[projects[near].id][0] : ''}</div>
 
         {panel && (
-          <div role="region" aria-label={t.allProjects} className="absolute start-4 top-[13.8rem] z-30 max-h-[calc(100svh-24rem)] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 p-3 md:start-12 md:top-[13.5rem]">
+          <div role="region" aria-label={t.allProjects} className="absolute start-4 top-[15rem] sm:top-[13.8rem] z-30 max-h-[calc(100svh-25rem)] sm:max-h-[calc(100svh-24rem)] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 p-3 md:start-12 md:top-[13.5rem]">
             <p className="px-2 pb-2 text-xs text-zinc-400">{t.panelNote}</p>
             <ul>{projects.map((q, i) => (
               <li key={q.id}><button onClick={() => go(i)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start hover:bg-zinc-800/80">
