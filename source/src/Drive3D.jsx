@@ -293,7 +293,7 @@ export default function Drive3D({ projects, t }) {
         c2.fillStyle = '#3a2318'; c2.textAlign = 'center'; c2.textBaseline = 'middle'; c2.font = 'bold 44px sans-serif'
         const title = (t.projects[p.id] && t.projects[p.id][0]) || ''; c2.fillText(title.length > 24 ? title.slice(0, 23) + '…' : title, 256, 66, 470)
         const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace
-        const ban = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.2), new THREE.MeshBasicMaterial({ map: tx })); ban.position.y = 4.4; ban.rotation.y = Math.PI / 2; g.add(ban)
+        const ban = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.2), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); ban.position.y = 4.4; ban.rotation.y = Math.PI / 2; g.add(ban)
         const ban2 = new THREE.Mesh(ban.geometry, ban.material); ban2.position.y = 4.4; ban2.rotation.y = -Math.PI / 2; g.add(ban2)
         const ring = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 4), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); ring.rotation.y = Math.PI / 2; ring.position.y = 2; g.add(ring)
         scene.add(g)
@@ -546,6 +546,7 @@ export default function Drive3D({ projects, t }) {
           const rx = st.x - q.gx, rz = st.z - q.gz, along = rx * q.axx + rz * q.axz, lat = rx * q.latx + rz * q.latz
           if (Math.abs(lat) < 1.9 && Math.abs(along) < 4) { if (q.prev !== 0 && Math.sign(along) !== q.prev && Math.abs(st.v) > 2) { q.pulse = 1; for (let n = 0; n < 14; n++) dustP.emit(q.gx + (Math.random() - .5) * 4, 1 + Math.random() * 3, q.gz + (Math.random() - .5) * 4, (Math.random() - .5) * 2, 2 + Math.random() * 2, (Math.random() - .5) * 2, .9, 1) } q.prev = Math.sign(along) || q.prev } else q.prev = 0
           q.pulse = Math.max(0, q.pulse - dt * 1.4); q.ring.material.opacity = q.pulse * .55; q.ban.scale.setScalar(1 + q.pulse * .12)
+          q.ban.material.opacity = Math.max(0, Math.min(1, (Math.hypot(camera.position.x - q.gx, camera.position.z - q.gz) - 3) / 5)) // fade the banner when the camera is right next to it so it never blocks the view
         })
         if (draw) renderer.render(scene, camera)
       }
