@@ -15,7 +15,9 @@ const stationPos = (i) => STATIONS[i % STATIONS.length]
 
 export default function Drive3D({ projects, t, game = false, onExit, preview = false }) {
   const wrap = useRef(null), mount = useRef(null)
-  const keys = useRef({ l: false, r: false, up: false, dn: false })
+  const keys = useRef({ l: false, r: false, up: false, dn: false, run: false, jump: false })
+  const footRef = useRef(false)
+  const [foot, setFootState] = useState(false)
   const api = useRef({})
   const [near, setNear] = useState(-1)
   const [open, setOpen] = useState(-1)
@@ -254,8 +256,9 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
         return {
           wake() { init(); if (ctx && ctx.state === 'suspended') ctx.resume() },
           setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : .55, ctx.currentTime, .05) },
-          update(v, thr) {
+          update(v, thr, hush) {
             if (!ctx || muted) return
+            if (hush) { gain.gain.setTargetAtTime(0, ctx.currentTime, .2); return }
             // calm steady hum: speed is smoothed heavily, no throttle jumps, soft filter
             this.sm = (this.sm || 0) + (Math.min(1, Math.abs(v) / 14) - (this.sm || 0)) * .06
             const s = this.sm, t = ctx.currentTime, f = 52 + s * 38
@@ -442,6 +445,21 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
         blob.material.opacity = .55 + .3 * k
       }
       paint(modeK)
+      // ---- on-foot cartoon character (stylized, procedural animation) ----
+      const man = new THREE.Group(); man.visible = false; scene.add(man)
+      {
+        const sk = new THREE.MeshStandardMaterial({ color: 0xe0ac84, roughness: .8 }), sh = new THREE.MeshStandardMaterial({ color: 0x2f86c0, roughness: .8 }), pa = new THREE.MeshStandardMaterial({ color: 0x24364d, roughness: .8 }), ht = new THREE.MeshStandardMaterial({ color: 0xf2d27a, roughness: .8 }), bt = new THREE.MeshStandardMaterial({ color: 0x3b2c22, roughness: .8 })
+        const pt = (g, m, x, y, z, p) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); p.add(o); return o }
+        pt(new THREE.BoxGeometry(.5, .6, .3), sh, 0, 1.05, 0, man); pt(new THREE.SphereGeometry(.26, 14, 12), sk, 0, 1.58, 0, man)
+        pt(new THREE.CylinderGeometry(.4, .4, .05, 16), ht, 0, 1.72, 0, man); pt(new THREE.CylinderGeometry(.22, .26, .16, 14), ht, 0, 1.8, 0, man)
+        pt(new THREE.SphereGeometry(.04, 6, 6), pa, -.09, 1.6, .24, man); pt(new THREE.SphereGeometry(.04, 6, 6), pa, .09, 1.6, .24, man)
+        const lb = (m, x, y, len, w) => { const g = new THREE.Group(); g.position.set(x, y, 0); const o = new THREE.Mesh(new THREE.BoxGeometry(w, len, w), m); o.position.y = -len / 2; g.add(o); man.add(g); return g }
+        man.userData = { aL: lb(sk, -.34, 1.3, .55, .14), aR: lb(sk, .34, 1.3, .55, .14), lL: lb(pa, -.13, .8, .8, .18), lR: lb(pa, .13, .8, .8, .18) }
+        pt(new THREE.BoxGeometry(.2, .12, .3), bt, 0, -.74, .04, man.userData.lL); pt(new THREE.BoxGeometry(.2, .12, .3), bt, 0, -.74, .04, man.userData.lR)
+        man.scale.setScalar(1.05)
+      }
+      const carSt = { x: 0, z: 0, h: 0 }; const parkCol = [0, 0, 1.7]
+      let jy = 0, jv = 0, gph = 0, manSp = 0
       const st = { x: 0, z: 0, h: 0, v: 0 }
       let thr = 0, steerS = 0, camH = 0, axS = 0
       const camPos = new THREE.Vector3(0, 5, -9); let occK = 1
@@ -451,8 +469,20 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
         const [sx, sz] = stationPos(i), d = Math.hypot(sx, sz), px = sx * (1 - 7 / d), pz = sz * (1 - 7 / d)
         place(px, pz, Math.atan2(sx - px, sz - pz))
       }
-      const home = () => { place(0, 0, 0.5); resetCrates() }
-      api.current = { wake: () => audio.wake(), setSound: (m) => audio.setMuted(!m), gotoStation, home, state: () => ({ ...st }), place, resetCrates, setMode: (m) => { modeTo = m === 'day' ? 1 : 0 } }
+      const home = () => { if (footRef.current) { const i = colliders.indexOf(parkCol); if (i >= 0) colliders.splice(i, 1); footRef.current = false; setFootState(false); man.visible = false }; place(0, 0, 0.5); resetCrates() }
+      const toFoot = () => {
+        if (footRef.current) return
+        carSt.x = st.x; carSt.z = st.z; carSt.h = st.h; parkCol[0] = st.x; parkCol[1] = st.z; colliders.push(parkCol)
+        const px = st.x + Math.cos(st.h) * 2.6, pz = st.z - Math.sin(st.h) * 2.6
+        footRef.current = true; setFootState(true); man.visible = true; place(px, pz, st.h); jy = 0; jv = 0
+      }
+      const toCar = () => {
+        if (!footRef.current) return
+        const i = colliders.indexOf(parkCol); if (i >= 0) colliders.splice(i, 1)
+        const h = st.h, cx = st.x - Math.cos(h) * 2.8, cz = st.z + Math.sin(h) * 2.8
+        footRef.current = false; setFootState(false); man.visible = false; place(cx, cz, h)
+      }
+      api.current = { toggleFoot: () => (footRef.current ? toCar() : toFoot()), wake: () => audio.wake(), setSound: (m) => audio.setMuted(!m), gotoStation, home, state: () => ({ ...st }), place, resetCrates, setMode: (m) => { modeTo = m === 'day' ? 1 : 0 } }
       window.__crates = () => crates.map((c) => [+c.x.toFixed(1), +c.y.toFixed(2), +c.tilt.toFixed(2), +c.vy.toFixed(2)]); window.__driveState = () => ({ ...st }); window.__gatePulse = () => gates.map((q) => q.pulse); window.__driveWorld = { gates: gates.map((q) => ({ x: q.gx, z: q.gz, ax: q.axx, az: q.axz })), stations: STATIONS, sparks: SPARKS, puddles, crates, socials: socialObjs.map((o) => ({ x: o.x, z: o.z, id: o.l.id })) }; window.__driveMode = (m, instant) => { modeTo = m === 'day' ? 1 : 0; if (instant) { modeK = modeTo; paint(modeK) } }; window.__drivePlace = (x, z, h) => { place(x, z, h); camPos.set(x - Math.sin(h) * 9, 5, z - Math.cos(h) * 9) }
       // opening view: car faces station 0 from the middle
       place(0, 0, 0.5); camPos.set(-Math.sin(.5) * 9, 5, -Math.cos(.5) * 9)
@@ -478,20 +508,27 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
         bumpCd -= dt; clouds.rotation.y += dt * .004
         thr += ((k.up ? 1 : 0) - thr) * (1 - Math.exp(-dt * 7))
         const vPrev = st.v
+        const foot = footRef.current
+        if (foot) {
+          const vmax = k.run ? 6.2 : 2.9
+          st.v += ((k.up ? vmax : k.dn ? -1.8 : 0) - st.v) * (1 - Math.exp(-dt * 9))
+        } else {
         const acc = k.dn ? (st.v > .5 ? -24 : -10) : 14 * thr
         st.v += acc * dt
         if (!k.up && !k.dn) st.v -= Math.sign(st.v) * Math.min(Math.abs(st.v), 6 * dt)
         st.v = Math.max(-6, Math.min(14, st.v))
+        }
         const steer = (k.l ? 1 : 0) - (k.r ? 1 : 0)
         steerS += (steer - steerS) * (1 - Math.exp(-dt * 9))
-        st.h += steerS * 2.1 * (1 - .3 * Math.min(1, Math.abs(st.v) / 14)) * Math.max(-1, Math.min(1, st.v / 5)) * dt
+        if (foot) st.h += steerS * 2.8 * dt
+        else st.h += steerS * 2.1 * (1 - .3 * Math.min(1, Math.abs(st.v) / 14)) * Math.max(-1, Math.min(1, st.v / 5)) * dt
         st.x += Math.sin(st.h) * st.v * dt; st.z += Math.cos(st.h) * st.v * dt
-        audio.update(st.v, k.up)
+        audio.update(foot ? 0 : st.v, k.up, foot)
         for (let i = 0; i < colliders.length; i++) {
           const c = colliders[i], cx = st.x - c[0], cz = st.z - c[1]
           if (Math.abs(cx) > 9 || Math.abs(cz) > 9) continue
-          const dd = Math.hypot(cx, cz), lim = c[2] + 1.5
-          if (dd < lim && dd > 1e-4) { if (c[3] && st.v > 5) { breakLamp(c[3]); st.v *= .88; fx.bumps++; shake = Math.min(1, st.v / 12); continue } if (st.v > 2.5 && bumpCd <= 0) bump(st.v); st.x = c[0] + (cx / dd) * lim; st.z = c[1] + (cz / dd) * lim; st.v *= Math.max(0, 1 - 6 * dt) }
+          const dd = Math.hypot(cx, cz), lim = c[2] + (foot ? .45 : 1.5)
+          if (dd < lim && dd > 1e-4) { if (foot) { st.x = c[0] + (cx / dd) * lim; st.z = c[1] + (cz / dd) * lim; continue } if (c[3] && st.v > 5) { breakLamp(c[3]); st.v *= .88; fx.bumps++; shake = Math.min(1, st.v / 12); continue } if (st.v > 2.5 && bumpCd <= 0) bump(st.v); st.x = c[0] + (cx / dd) * lim; st.z = c[1] + (cz / dd) * lim; st.v *= Math.max(0, 1 - 6 * dt) }
         }
         const d = Math.hypot(st.x, st.z)
         if (d > EDGE) { st.x *= EDGE / d; st.z *= EDGE / d; st.v *= .5 }
@@ -564,13 +601,25 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
           }
           tails.forEach((m) => m.color.setHex(k.dn && st.v > .3 ? 0xff7a5a : 0xd02a22))
         }
+        if (foot) {
+          car.position.set(carSt.x, 0, carSt.z); car.rotation.set(0, carSt.h, 0)
+          const U = man.userData, sp2 = Math.abs(st.v), want = Math.min(1, sp2 / 3)
+          manSp += (want - manSp) * (1 - Math.exp(-dt * 10)); gph += dt * (3 + sp2 * 2.2)
+          if (jy === 0 && k.jump) { jv = 5.2; jy = .001 }
+          if (jy > 0) { jv -= 15 * dt; jy += jv * dt; if (jy <= 0) { jy = 0; jv = 0 } }
+          const sw = Math.sin(gph) * (.55 + .5 * Math.min(1, sp2 / 6)) * manSp * (st.v < 0 ? -1 : 1)
+          U.lL.rotation.x = sw; U.lR.rotation.x = -sw; U.aL.rotation.x = -sw * .9; U.aR.rotation.x = sw * .9
+          if (jy > 0) { U.lL.rotation.x = -.6; U.lR.rotation.x = .3; U.aL.rotation.x = -2.4; U.aR.rotation.x = -2.4 }
+          else if (manSp < .05) { U.aL.rotation.x = Math.sin(t * 1.7) * .05; U.aR.rotation.x = -Math.sin(t * 1.7) * .05 }
+          man.position.set(st.x, jy + Math.abs(Math.sin(gph)) * .06 * manSp, st.z); man.rotation.y = st.h; man.rotation.x = -manSp * (k.run ? .16 : .05)
+        } else
         car.position.set(st.x, Math.sin(t * 18) * .01 * Math.abs(st.v) / 14, st.z)
-        axS += (((st.v - vPrev) / Math.max(dt, 1e-3)) - axS) * (1 - Math.exp(-dt * 8))
-        car.rotation.x = Math.sin(t * 40) * shake * .04 - Math.max(-24, Math.min(14, axS)) * .0042; car.rotation.y = st.h; car.rotation.z = -steerS * Math.min(1, Math.abs(st.v) / 14) * .09
-        wheels[0].rotation.y = wheels[1].rotation.y = steerS * .5
-        if (Math.abs(steerS) > .7 && st.v > 8 && Math.random() < .5) dustP.emit(st.x - Math.sin(st.h) * 1.4 + (Math.random() - .5), .2, st.z - Math.cos(st.h) * 1.4 + (Math.random() - .5), (Math.random() - .5), .6, (Math.random() - .5), .6, 1)
+        if (!foot) axS += (((st.v - vPrev) / Math.max(dt, 1e-3)) - axS) * (1 - Math.exp(-dt * 8))
+        if (!foot) { car.rotation.x = Math.sin(t * 40) * shake * .04 - Math.max(-24, Math.min(14, axS)) * .0042; car.rotation.y = st.h; car.rotation.z = -steerS * Math.min(1, Math.abs(st.v) / 14) * .09
+        wheels[0].rotation.y = wheels[1].rotation.y = steerS * .5 }
+        if (!foot && Math.abs(steerS) > .7 && st.v > 8 && Math.random() < .5) dustP.emit(st.x - Math.sin(st.h) * 1.4 + (Math.random() - .5), .2, st.z - Math.cos(st.h) * 1.4 + (Math.random() - .5), (Math.random() - .5), .6, (Math.random() - .5), .6, 1)
         { let e = st.h - camH; e = Math.atan2(Math.sin(e), Math.cos(e)); camH += e * (1 - Math.exp(-dt * 3.4)) }
-        const camD = 9 + Math.abs(st.v) * .1, tx = st.x - Math.sin(camH) * camD, tz = st.z - Math.cos(camH) * camD
+        const camD = foot ? 5.4 : 9 + Math.abs(st.v) * .1, tx = st.x - Math.sin(camH) * camD, tz = st.z - Math.cos(camH) * camD
         camPos.x += (tx - camPos.x) * (1 - Math.exp(-dt * 4)); camPos.z += (tz - camPos.z) * (1 - Math.exp(-dt * 4))
         for (let i = 0; i < colliders.length; i++) {
           const c = colliders[i], cx = camPos.x - c[0], cz = camPos.z - c[1]
@@ -579,7 +628,7 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
           if (dd < lim && dd > 1e-4) { camPos.x = c[0] + (cx / dd) * lim; camPos.z = c[1] + (cz / dd) * lim }
         }
         camera.fov = (camera.aspect < 0.8 ? 74 : small ? 66 : 55) + Math.abs(st.v) * .7; camera.updateProjectionMatrix()
-        let cX = camPos.x, cZ = camPos.z, cY = 4.4
+        let cX = camPos.x, cZ = camPos.z, cY = foot ? 2.7 : 4.4
         { const vx = cX - st.x, vz = cZ - st.z, len2 = vx * vx + vz * vz, len = Math.sqrt(len2); let k = 1
           for (let i = 0; i < colliders.length; i++) {
             const c = colliders[i]; if (c[2] < 1.2) continue
@@ -590,9 +639,9 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
             if (dd < c[2] * .95) k = Math.min(k, Math.max(.3, tt - (c[2] + .6) / Math.max(len, 1)))
           }
           occK += (k - occK) * (1 - Math.exp(-dt * (k < occK ? 12 : 3)))
-          cX = st.x + vx * occK; cZ = st.z + vz * occK; cY = 4.4 - (1 - occK) * 1.2 }
+          cX = st.x + vx * occK; cZ = st.z + vz * occK; cY = (foot ? 2.7 : 4.4) - (1 - occK) * 1.2 }
         camera.position.set(cX + Math.sin(t * 61) * shake * .28, cY + Math.cos(t * 53) * shake * .2, cZ); shake *= Math.exp(-dt * 6)
-        camera.lookAt(st.x + Math.sin(st.h) * 4, 3.4, st.z + Math.cos(st.h) * 4)
+        camera.lookAt(st.x + Math.sin(st.h) * (foot ? 3 : 4), foot ? 1.5 : 3.4, st.z + Math.cos(st.h) * (foot ? 3 : 4))
         if (window.__camOv) { const o = window.__camOv, a = st.h + o.az; camera.position.set(st.x + Math.sin(a) * o.d, o.y, st.z + Math.cos(a) * o.d); camera.lookAt(st.x, .8, st.z) }
         boards.forEach((o) => { o.b.rotation.y = Math.atan2(st.x - o.wx, st.z - o.wz) })
         sparkObjs.forEach((o) => {
@@ -600,7 +649,7 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
           o.orb.position.y = 1.4 + Math.sin(t * 2 + o.k) * .25; o.orb.rotation.y = t
           if (Math.hypot(st.x - SPARKS[o.k][0], st.z - SPARKS[o.k][1]) < 2.8) { o.on = false; o.g.visible = false; if (!foundRef.current.includes(o.k)) setFound((f) => [...f, o.k]); setToast(String(o.k) + ':' + Date.now()) }
         })
-        wheels.forEach((w) => { w.children[0].rotation.x += st.v * dt / .45 })
+        if (!foot) wheels.forEach((w) => { w.children[0].rotation.x += st.v * dt / .45 })
         pads.forEach((p, i) => { p.material.opacity = nearRef.current === i ? 1 : .55 + Math.sin(t * 2 + i) * .15 })
         socialObjs.forEach((o) => { o.bd.rotation.y = Math.atan2(st.x - o.x, st.z - o.z) })
         { let sb = -1, sd = 4.6; socialObjs.forEach((o, i) => { const dd = Math.hypot(st.x - o.x, st.z - o.z); if (dd < sd) { sd = dd; sb = i } }); if (sb !== socNearRef.current) { socNearRef.current = sb; setSocNear(sb) } }
@@ -640,6 +689,9 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
   const openAt = (i) => { setOpen(i); setVisited((v) => (v.includes(i) ? v : [...v, i])) }
   const refocus = () => wrap.current?.focus({ preventScroll: true })
   const onKey = (down) => (e) => {
+    if (e.key === 'Shift') { keys.current.run = down; return }
+    if (down && (e.key === 'c' || e.key === 'C')) { api.current.toggleFoot?.(); e.preventDefault(); return }
+    if (e.key === ' ' && footRef.current) { keys.current.jump = down; if (down) dismissOnb(); e.preventDefault(); return }
     const k = MAP[e.key]
     if (k) { keys.current[k] = down; if (down) dismissOnb(); e.preventDefault(); return }
     if (!down) return
@@ -684,6 +736,7 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
           <span className={chip + ' hidden md:inline-flex'} aria-live="polite">{t.sparks}: <b dir="ltr">{found.length}/{SPARKS.length}</b></span>
           <button onClick={() => setPanel((v) => !v)} aria-expanded={panel} className={chip + ' hover:border-[#2a73a6] min-h-[40px] px-4 md:min-h-0 md:px-3 !bg-[#b9e0f7] !border-[#8cc4e8] font-bold'}>{t.allProjects}</button>
           <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'} aria-label={t.home}>↺<span className="hidden md:inline">&nbsp;{t.homeShort}</span></button>
+          <button onClick={() => { api.current.toggleFoot?.(); api.current.wake?.(); refocus() }} aria-pressed={foot} aria-label={foot ? t.takeCar : t.goWalk} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3 !bg-[#b9e0f7] !border-[#8cc4e8] font-bold'}>{foot ? t.takeCar : t.goWalk}</button>
           <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); window.dispatchEvent(new Event('drive-mode')); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀' : '☾'}<span className="hidden md:inline">&nbsp;{mode === 'day' ? t.dayMode : t.nightMode}</span></button>
           <button onClick={() => { const m = !snd; setSnd(m); try { localStorage.setItem('drive-sound', m ? 'on' : 'off') } catch {}; api.current.wake?.(); api.current.setSound?.(m); refocus() }} aria-pressed={snd} aria-label={snd ? t.soundOff : t.soundOn} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{snd ? '🔊' : '🔇'}</button>
           {!game && <button onClick={() => { const on = !immersive; setImmersive(on); try { if (on) document.documentElement.requestFullscreen?.() ; else if (document.fullscreenElement) document.exitFullscreen?.() } catch {} ; refocus() }} aria-pressed={immersive} aria-label={immersive ? t.exitFull : t.fullscreen} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{immersive ? '⤡' : '⤢'}</button>}
@@ -709,7 +762,7 @@ export default function Drive3D({ projects, t, game = false, onExit, preview = f
         {/* touch controls */}
         <div dir="ltr" className="absolute inset-x-0 bottom-5 z-10 touch-ctl items-end justify-between px-4">
           <div className="flex gap-3"><button aria-label={t.left} className={btn} {...hold('l')}>◀</button><button aria-label={t.right} className={btn} {...hold('r')}>▶</button></div>
-          <div className="flex items-end gap-3"><button aria-label={t.brake} className={btn} {...hold('dn')}>■</button><button aria-label={t.gas} className={btn + ' !h-[82px] !w-[82px] !bg-[#b9e0f7]/85 !text-black'} {...hold('up')}>▲</button></div>
+          <div className="flex items-end gap-3">{foot && <button aria-label={t.run} className={btn + ' !text-base font-bold'} {...hold('run')}>{t.run}</button>}{foot && <button aria-label={t.jump} className={btn + ' !text-2xl'} {...hold('jump')}>⤒</button>}<button aria-label={t.brake} className={btn} {...hold('dn')}>■</button><button aria-label={t.gas} className={btn + ' !h-[82px] !w-[82px] !bg-[#b9e0f7]/85 !text-black'} {...hold('up')}>▲</button></div>
         </div>
         {/* near prompt */}
         <div className="pointer-events-none absolute inset-x-0 bottom-32 z-10 near-prompt flex justify-center px-4 md:bottom-10">
