@@ -59,7 +59,7 @@ export default function Drive3D({ projects, t }) {
       const outline = (mesh, sx, sy, sz) => { const m = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide })); m.scale.set(sx, sy || sx, sz || sx); mesh.add(m); return m }
       const MODES = {
         night: { top: 0x070f26, mid: 0x14264d, low: 0x4a2a52, fog: 0x1b1a36, fn: 45, ff: 150, hemiS: 0x8fa0ff, hemiG: 0x1a1a2a, hemiI: .9, sunC: 0x9fb4ff, sunI: 1.0, ground: 0x1f2233, tree: 0x1f5a4a, lamp: 0xffe4a8, beam: .2, disc: 0xcfd8ff, road: 0x2c303f, cloud: 0, stars: 1, win: 1, glow: .16, cone: .09, water: 0x2b4a7a, wo: .85, wsplash: 0xbfd8ff, dust: 0x6c6c88, gridO: 1 },
-        day: { top: 0x8fd0e6, mid: 0xcdeaf0, low: 0xfff1d6, fog: 0xfbe9cc, fn: 70, ff: 210, hemiS: 0xfff1dc, hemiG: 0xb08a60, hemiI: 1.9, sunC: 0xfff0d0, sunI: 2.4, ground: 0xe3bd84, tree: 0x3f9a6a, lamp: 0x8c93a3, beam: .36, disc: 0xfff3c4, road: 0xb98255, cloud: .9, stars: 0, win: 0, glow: 0, cone: 0, water: 0x6cc5d6, wo: .78, wsplash: 0xffffff, dust: 0xcdb89a, gridO: .06 },
+        day: { top: 0x8fd0e6, mid: 0xcdeaf0, low: 0xf1f2ec, fog: 0xeaeee9, fn: 70, ff: 210, hemiS: 0xf4f6f4, hemiG: 0x9a9484, hemiI: 1.9, sunC: 0xfff7ea, sunI: 2.4, ground: 0xe6d7bb, tree: 0x3f9a6a, lamp: 0x8c93a3, beam: .36, disc: 0xfff3c4, road: 0xb98255, cloud: .9, stars: 0, win: 0, glow: 0, cone: 0, water: 0x6cc5d6, wo: .78, wsplash: 0xffffff, dust: 0xcdb89a, gridO: .06 },
       }
       scene.fog = new THREE.Fog(0x1b1a36, 45, 150)
       const camera = new THREE.PerspectiveCamera(small ? 66 : 55, 1, 0.1, 320)
@@ -653,7 +653,7 @@ export default function Drive3D({ projects, t }) {
   })
   const go = (i) => { api.current.gotoStation?.(i); openAt(i); setPanel(false); dismissOnb(); refocus() }
   const cur = open >= 0 ? projects[open] : near >= 0 ? projects[near] : null
-  const btn = 'grid h-[76px] w-[76px] select-none place-items-center rounded-3xl border border-[#bcd6ea]/70 bg-[#e4f1f9] text-3xl text-[#1c3350] shadow-lg shadow-sky-900/10 active:bg-gold active:text-black md:h-12 md:w-12 md:text-xl'
+  const btn = 'grid h-[68px] w-[68px] select-none place-items-center rounded-3xl border border-[#bcd6ea]/70 bg-[#e4f1f9]/75 text-3xl text-[#1c3350] shadow-lg shadow-sky-900/10 active:bg-gold active:text-black md:h-12 md:w-12 md:text-xl'
   const sparkIdx = toast ? Number(toast.split(':')[0]) : -1
   useEffect(() => { const f = () => { if (!document.fullscreenElement) setImmersive((v) => (v && document.fullscreenEnabled ? false : v)) }; document.addEventListener('fullscreenchange', f); return () => document.removeEventListener('fullscreenchange', f) }, [])
   useEffect(() => { document.body.style.overflow = immersive ? 'hidden' : ''; return () => { document.body.style.overflow = '' } }, [immersive])
@@ -677,10 +677,10 @@ export default function Drive3D({ projects, t }) {
         {/* discovery counters (no route hints) + secondary actions */}
         <div className="absolute inset-x-0 top-[9.7rem] z-10 hud-chips flex flex-wrap items-center gap-2 px-6 md:top-[11.25rem] md:px-12">
           <span className={chip} aria-live="polite">{t.discovered}: <b dir="ltr">{visited.length}/{N}</b></span>
-          <span className={chip} aria-live="polite">{t.sparks}: <b dir="ltr">{found.length}/{SPARKS.length}</b></span>
-          <button onClick={() => setPanel((v) => !v)} aria-expanded={panel} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{t.allProjects}</button>
-          <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'} aria-label={t.home}>↺ {t.homeShort}</button>
-          <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀ ' + t.dayMode : '☾ ' + t.nightMode}</button>
+          <span className={chip + ' hidden md:inline-flex'} aria-live="polite">{t.sparks}: <b dir="ltr">{found.length}/{SPARKS.length}</b></span>
+          <button onClick={() => setPanel((v) => !v)} aria-expanded={panel} className={chip + ' hover:border-[#2a73a6] min-h-[40px] px-4 md:min-h-0 md:px-3 !bg-[#b9e0f7] !border-[#8cc4e8] font-bold'}>{t.allProjects}</button>
+          <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'} aria-label={t.home}>↺<span className="hidden md:inline">&nbsp;{t.homeShort}</span></button>
+          <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀' : '☾'}<span className="hidden md:inline">&nbsp;{mode === 'day' ? t.dayMode : t.nightMode}</span></button>
           <button onClick={() => { const m = !snd; setSnd(m); try { localStorage.setItem('drive-sound', m ? 'on' : 'off') } catch {}; api.current.wake?.(); api.current.setSound?.(m); refocus() }} aria-pressed={snd} aria-label={snd ? t.soundOff : t.soundOn} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{snd ? '🔊' : '🔇'}</button>
           <button onClick={() => { const on = !immersive; setImmersive(on); try { if (on) document.documentElement.requestFullscreen?.() ; else if (document.fullscreenElement) document.exitFullscreen?.() } catch {} ; refocus() }} aria-pressed={immersive} aria-label={immersive ? t.exitFull : t.fullscreen} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{immersive ? '⤡' : '⤢'}</button>
           {knocked && <button onClick={() => { api.current.resetCrates?.(); refocus() }} className={chip + ' hover:border-gold min-h-[44px] px-4 md:min-h-0 md:px-3'}>↻ {t.resetBoxes}</button>}
@@ -705,7 +705,7 @@ export default function Drive3D({ projects, t }) {
         {/* touch controls */}
         <div dir="ltr" className="absolute inset-x-0 bottom-5 z-10 touch-ctl items-end justify-between px-4">
           <div className="flex gap-3"><button aria-label={t.left} className={btn} {...hold('l')}>◀</button><button aria-label={t.right} className={btn} {...hold('r')}>▶</button></div>
-          <div className="flex items-end gap-3"><button aria-label={t.brake} className={btn} {...hold('dn')}>■</button><button aria-label={t.gas} className={btn + ' !h-[92px] !w-[92px] !bg-gold/85 !text-black'} {...hold('up')}>▲</button></div>
+          <div className="flex items-end gap-3"><button aria-label={t.brake} className={btn} {...hold('dn')}>■</button><button aria-label={t.gas} className={btn + ' !h-[82px] !w-[82px] !bg-[#b9e0f7]/85 !text-black'} {...hold('up')}>▲</button></div>
         </div>
         {/* near prompt */}
         <div className="pointer-events-none absolute inset-x-0 bottom-32 z-10 near-prompt flex justify-center px-4 md:bottom-10">
