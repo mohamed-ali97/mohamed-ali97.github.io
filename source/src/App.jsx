@@ -31,7 +31,7 @@ export default function App() {
   const [sel, setSel] = useState(null)
   const [has3D] = useState(canShow3D)
   const [listView, setListView] = useState(false)
-  const show3D = has3D && !listView
+  const show3D = has3D
 
   useEffect(() => {
     if (!sel) return
@@ -45,14 +45,16 @@ export default function App() {
     gsap.from('.hero-fade', { opacity: 0, y: 24, duration: 0.8, stagger: 0.12, delay: 0.7, ease: 'power2.out' })
     gsap.to('.blob-a', { x: 70, y: 40, duration: 7, repeat: -1, yoyo: true, ease: 'sine.inOut' })
     gsap.to('.blob-b', { x: -60, y: -40, duration: 9, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+    if (has3D) return
     gsap.utils.toArray('.project').forEach((el) => {
       gsap.from(el, { opacity: 0, y: 70, duration: 0.9, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 85%' } })
       gsap.fromTo(el.querySelector('.shot'), { yPercent: 6 }, { yPercent: -6, ease: 'none', scrollTrigger: { trigger: el, scrub: true } })
     })
-  }, { scope: root, dependencies: [show3D] })
+  }, { scope: root, dependencies: [listView] })
 
   const nameParts = t.name.split(' ')
-  const hasList = !show3D
+  const hasList = !has3D || listView
+  useEffect(() => { document.body.style.overflow = has3D && listView ? 'hidden' : ''; return () => { document.body.style.overflow = '' } }, [has3D, listView])
   return (
     <div ref={root}>
       <nav className="fixed inset-x-0 top-0 z-20 flex items-center justify-between px-3 py-3 md:px-8 md:py-4 backdrop-blur bg-ink/60 md:px-8">
@@ -66,7 +68,8 @@ export default function App() {
       </nav>
 
       {show3D && <Suspense fallback={<div className="grid h-screen place-items-center text-zinc-400">{t.loading}</div>}><Drive3D projects={projects} t={t} /></Suspense>}
-      {hasList && <>
+      {hasList && <div className={has3D ? 'list-overlay fixed inset-x-0 bottom-0 top-[64px] z-30 overflow-y-auto overscroll-contain bg-ink' : ''} role={has3D ? 'region' : undefined} aria-label={has3D ? t.listView : undefined}>
+        {has3D && <div className="sticky top-0 z-20 flex justify-end bg-ink/90 px-4 py-2 backdrop-blur"><button className="rounded-full border border-[#1c110c]/70 bg-gold px-4 py-2 min-h-[40px] text-sm font-bold text-black shadow-lg shadow-black/30" onClick={() => setListView(false)}>{t.closeList} ✕</button></div>}
         <header className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-28 pb-16 text-center">
           <div className="blob-a absolute left-[8%] top-[8%] h-96 w-96 rounded-full bg-gold opacity-30 blur-[90px]" />
           <div className="blob-b absolute bottom-[6%] right-[8%] h-96 w-96 rounded-full bg-teal-500 opacity-30 blur-[90px]" />
@@ -76,11 +79,11 @@ export default function App() {
           </h1>
           <p className="hero-fade relative z-10 max-w-xl text-lg text-zinc-300">{t.lead}</p>
           <div className="hero-fade relative z-10 mt-5">
-            <a className={btn + ' bg-gold text-black'} href="#work">{t.seeWork}</a>
+            <a className={btn + ' bg-gold text-black'} href={has3D ? '#work-list' : '#work'}>{t.seeWork}</a>
             <a className={btn + ' border border-gold text-gold'} href="https://behance.net/mohamedali31">Behance</a>
           </div>
         </header>
-        <main id="work" className="mx-auto max-w-6xl px-5 pt-24 pb-10">
+        <main id={has3D ? 'work-list' : 'work'} className="mx-auto max-w-6xl px-5 pt-24 pb-10">
           <h2 className="mb-12 text-4xl font-bold md:text-5xl">{t.selected}</h2>
           {projects.map((p, i) => (
             <article key={p.id} className="project mb-20 grid items-center gap-6 md:mb-28 md:grid-cols-2 md:gap-12">
@@ -97,7 +100,7 @@ export default function App() {
             </article>
           ))}
         </main>
-      </>}
+      </div>}
 
       <div className="overflow-hidden border-y border-zinc-800 bg-panel py-4" dir="ltr" aria-hidden="true">
         <div className="animate-marquee flex w-max">
