@@ -26,7 +26,7 @@ export default function Drive3D({ projects, t }) {
   const [toast, setToast] = useState('')
   const [onb, setOnb] = useState(() => { try { return !localStorage.getItem('drive-seen') } catch { return true } })
   const [panel, setPanel] = useState(false)
-  const [mode, setModeState] = useState(() => { try { const m = localStorage.getItem('drive-mode'); if (m === 'day' || m === 'night') return m; const h = new Date().getHours(); return h >= 6 && h < 18 ? 'day' : 'night' } catch { return 'night' } })
+  const [mode, setModeState] = useState(() => { try { const m = localStorage.getItem('drive-mode'); if (m === 'day' || m === 'night') return m; const h = 12; return h >= 6 && h < 18 ? 'day' : 'night' } catch { return 'night' } })
   const modeRef = useRef(mode); modeRef.current = mode
   const [knocked, setKnocked] = useState(false)
   const [snd, setSnd] = useState(() => { try { return localStorage.getItem('drive-sound') !== 'off' } catch { return true } })
@@ -55,11 +55,11 @@ export default function Drive3D({ projects, t }) {
       const scene = new THREE.Scene()
       const toonGrad = (() => { const d = new Uint8Array([70, 120, 175, 220, 255]); const t = new THREE.DataTexture(d, 5, 1, THREE.RedFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t })()
       const Toon = (o) => { const { roughness, metalness, clearcoat, clearcoatRoughness, flatShading, ...r } = o; return new THREE.MeshToonMaterial({ ...r, gradientMap: toonGrad }) }
-      const INK = 0x3a2318
+      const INK = 0x24405c
       const outline = (mesh, sx, sy, sz) => { const m = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide })); m.scale.set(sx, sy || sx, sz || sx); mesh.add(m); return m }
       const MODES = {
         night: { top: 0x070f26, mid: 0x14264d, low: 0x4a2a52, fog: 0x1b1a36, fn: 45, ff: 150, hemiS: 0x8fa0ff, hemiG: 0x1a1a2a, hemiI: .9, sunC: 0x9fb4ff, sunI: 1.0, ground: 0x1f2233, tree: 0x1f5a4a, lamp: 0xffe4a8, beam: .2, disc: 0xcfd8ff, road: 0x2c303f, cloud: 0, stars: 1, win: 1, glow: .16, cone: .09, water: 0x2b4a7a, wo: .85, wsplash: 0xbfd8ff, dust: 0x6c6c88, gridO: 1 },
-        day: { top: 0x8fd0e6, mid: 0xcdeaf0, low: 0xfff1d6, fog: 0xfbe9cc, fn: 70, ff: 210, hemiS: 0xfff1dc, hemiG: 0xb08a60, hemiI: 1.9, sunC: 0xfff0d0, sunI: 2.4, ground: 0xe3bd84, tree: 0x3f9a6a, lamp: 0x8c93a3, beam: .36, disc: 0xfff3c4, road: 0xb98255, cloud: .9, stars: 0, win: 0, glow: 0, cone: 0, water: 0x6cc5d6, wo: .78, wsplash: 0xffffff, dust: 0xcdb89a, gridO: .06 },
+        day: { top: 0x8fd0e6, mid: 0xcdeaf0, low: 0xd4ebfa, fog: 0xcde6f7, fn: 70, ff: 210, hemiS: 0xeaf4ff, hemiG: 0xa9bccb, hemiI: 1.25, sunC: 0xf4f9ff, sunI: 1.7, ground: 0xa6d2ee, tree: 0x3f9a6a, lamp: 0x8c93a3, beam: .36, disc: 0xfff3c4, road: 0x7f98ad, cloud: .9, stars: 0, win: 0, glow: 0, cone: 0, water: 0x6cc5d6, wo: .78, wsplash: 0xffffff, dust: 0xdbe6ee, gridO: .06 },
       }
       scene.fog = new THREE.Fog(0x1b1a36, 45, 150)
       const camera = new THREE.PerspectiveCamera(small ? 66 : 55, 1, 0.1, 320)
@@ -134,7 +134,7 @@ export default function Drive3D({ projects, t }) {
         const bg = new THREE.BoxGeometry(w, h, w), uv = bg.attributes.uv
         for (let q = 0; q < uv.count; q++) { if (q >= 8 && q < 16) uv.setXY(q, .02, .02); else uv.setXY(q, uv.getX(q) * w / 4, uv.getY(q) * h / 4) }
         const bm = Toon({ color: new THREE.Color().setHSL(hue, .3, l0), roughness: .85, map: facade.a, emissive: 0xffffff, emissiveMap: facade.b, emissiveIntensity: 1 })
-        bMats.push({ m: bm, hue, l0, col: new THREE.Color([0xd9533f, 0x1e8a90, 0xf1d9a5, 0xe9a043, 0xb9774a][n % 5]) })
+        bMats.push({ m: bm, hue, l0, col: new THREE.Color([0xbfdcf2, 0xe8eef3, 0x9fcdee, 0xd3e3ee, 0xf4f8fb][n % 5]) })
         const bld = new THREE.Mesh(bg, bm); bld.position.y = h / 2; g.add(bld); outline(bld, 1 + .22 / w, 1 + .22 / h, 1 + .22 / w)
         if (h > 14) { const an = new THREE.Mesh(new THREE.CylinderGeometry(.04, .06, 3, 5), poleMat); an.position.y = h + 1.5; g.add(an); const tip = new THREE.Mesh(new THREE.SphereGeometry(.13, 6, 4), new THREE.MeshBasicMaterial({ color: 0xff3b30 })); tip.position.y = h + 3; g.add(tip) }
         scene.add(g)
@@ -142,7 +142,7 @@ export default function Drive3D({ projects, t }) {
       const nT = small ? 90 : 190
       const treeMat = Toon({ color: 0x1f5a4a, roughness: 1, flatShading: true })
       const treeMat2 = Toon({ color: 0x2a7a5c, roughness: 1, flatShading: true })
-      const trunkMat = Toon({ color: 0x5a3f2a, roughness: 1 })
+      const trunkMat = Toon({ color: 0x6b7f8f, roughness: 1 })
       const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(1.05, 2.0, 7), treeMat, nT)
       const trees2 = new THREE.InstancedMesh(new THREE.ConeGeometry(.72, 1.7, 7), treeMat2, nT)
       const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(.13, .18, 1.0, 6), trunkMat, nT)
@@ -201,7 +201,7 @@ export default function Drive3D({ projects, t }) {
       let ripHead = 0
       const ripple = (x, z) => { const r = ripples[ripHead]; ripHead = (ripHead + 1) % ripples.length; r.age = 0; r.m.position.x = x; r.m.position.z = z; r.m.visible = true; fx.ripples++ }
       // knock-over crates: stylized impulse, tipping and hop (not a rigid-body engine)
-      const crateTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#c4915a'; x.fillRect(0, 0, 128, 128); x.fillStyle = '#a9773f'; for (let i = 0; i < 4; i++) x.fillRect(0, i * 32 + 29, 128, 4); x.strokeStyle = '#7a5128'; x.lineWidth = 10; x.strokeRect(5, 5, 118, 118); x.beginPath(); x.moveTo(8, 8); x.lineTo(120, 120); x.moveTo(120, 8); x.lineTo(8, 120); x.lineWidth = 6; x.stroke(); const t0 = new THREE.CanvasTexture(c); t0.colorSpace = THREE.SRGBColorSpace; return t0 })()
+      const crateTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#d6e8f6'; x.fillRect(0, 0, 128, 128); x.fillStyle = '#a9cbe6'; for (let i = 0; i < 4; i++) x.fillRect(0, i * 32 + 29, 128, 4); x.strokeStyle = '#5f93bd'; x.lineWidth = 10; x.strokeRect(5, 5, 118, 118); x.beginPath(); x.moveTo(8, 8); x.lineTo(120, 120); x.moveTo(120, 8); x.lineTo(8, 120); x.lineWidth = 6; x.stroke(); const t0 = new THREE.CanvasTexture(c); t0.colorSpace = THREE.SRGBColorSpace; return t0 })()
       const tints = [0xffffff, 0xffe0bd, 0xcfe6ff, 0xffcad6, 0xdcf5c8]
       const crateGeo = new THREE.BoxGeometry(1.3, 1.3, 1.3).translate(0, .65, 0)
       const crateSpots = [[12, 24], [10.2, 24], [13.8, 24], [11.1, 25.6], [12.9, 25.6], [12, 27.2], [-24, -12], [34, -8], [-14, -34], [30, 52], [-48, 52], [52, -52], [-22, 70], [-60, -10]]
@@ -265,7 +265,7 @@ export default function Drive3D({ projects, t }) {
         }
       })()
       const breakLamp = (l) => { l.g.visible = false; l.col[2] = -9; burst(l.x, 1.2, l.z, 0x4a5068, 12, 1); burst(l.x, 3.2, l.z, 0xffe4a8, 6, 1); audio.crash() }
-      const breakCrate = (c) => { c.broken = true; c.g.visible = false; burst(c.x, .6, c.z, 0xc4915a, 14, 1.1); burst(c.x, .8, c.z, 0xa9773f, 8, .9); audio.crash() }
+      const breakCrate = (c) => { c.broken = true; c.g.visible = false; burst(c.x, .6, c.z, 0xcfe3f2, 14, 1.1); burst(c.x, .8, c.z, 0x9fc4e0, 8, .9); audio.crash() }
       const resetCrates = () => { lampList.forEach((l) => { l.g.visible = true; l.col[2] = .3 }); shards.forEach((s) => { s.m.visible = false })
         crates.forEach((c) => { c.broken = false; c.g.visible = true })
          crates.forEach((c) => { Object.assign(c, { x: c.hx, z: c.hz, vx: 0, vz: 0, y: 0, vy: 0, tilt: 0, tv: 0, rot: 0, spin: 0, gy: 0 }); c.g.position.set(c.hx, 0, c.hz); c.g.rotation.y = 0; c.inner.position.y = 0; c.inner.rotation.set(0, 0, 0) }); setKnocked(false) }
@@ -653,12 +653,12 @@ export default function Drive3D({ projects, t }) {
   })
   const go = (i) => { api.current.gotoStation?.(i); openAt(i); setPanel(false); dismissOnb(); refocus() }
   const cur = open >= 0 ? projects[open] : near >= 0 ? projects[near] : null
-  const btn = 'grid h-[76px] w-[76px] select-none place-items-center rounded-3xl border border-[#1c110c]/70 bg-[#5a3d2c] text-3xl text-[#fff4de] shadow-lg shadow-black/30 active:bg-gold active:text-black md:h-12 md:w-12 md:text-xl'
+  const btn = 'grid h-[76px] w-[76px] select-none place-items-center rounded-3xl border border-[#7aa6c7]/70 bg-[#dcebf7] text-3xl text-[#12263a] shadow-lg shadow-sky-900/20 active:bg-gold active:text-black md:h-12 md:w-12 md:text-xl'
   const sparkIdx = toast ? Number(toast.split(':')[0]) : -1
   useEffect(() => { const f = () => { if (!document.fullscreenElement) setImmersive((v) => (v && document.fullscreenEnabled ? false : v)) }; document.addEventListener('fullscreenchange', f); return () => document.removeEventListener('fullscreenchange', f) }, [])
   useEffect(() => { document.body.style.overflow = immersive ? 'hidden' : ''; return () => { document.body.style.overflow = '' } }, [immersive])
   useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(''), 4500); return () => clearTimeout(id) }, [toast])
-  const chip = 'inline-flex items-center rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-3 py-1 text-xs text-[#fff4de] shadow-lg shadow-black/30 md:text-sm'
+  const chip = 'inline-flex items-center rounded-full border border-[#7aa6c7]/70 bg-[#e1eef8] px-3 py-1 text-xs text-[#12263a] shadow-lg shadow-sky-900/20 md:text-sm'
 
   return (
     <section id="work" aria-label={t.galleryLabel} className={immersive ? 'fixed inset-0 z-[60] h-[100dvh] w-full overflow-hidden bg-black' : 'relative h-[100svh] min-h-[560px] w-full overflow-hidden'}>
@@ -669,9 +669,9 @@ export default function Drive3D({ projects, t }) {
         onPointerDown={(e) => { if (e.target === wrap.current || e.target === mount.current) refocus() }}
         className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-gold">
         <div ref={mount} className="absolute inset-0" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-64 hud-fade bg-gradient-to-b from-black/75 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-64 hud-fade bg-gradient-to-b from-white/75 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-20 hud-title md:px-12 md:pt-24">
-          <p className="text-xs uppercase tracking-[.2em] text-[#f1e2c4] md:tracking-[.25em]">{t.role}</p>
+          <p className="text-xs uppercase tracking-[.2em] text-[#1d3a56] md:tracking-[.25em]">{t.role}</p>
           <h1 className="mt-1 text-[clamp(1.5rem,4vw,3rem)] font-extrabold leading-none">{t.name}</h1>
         </div>
         {/* discovery counters (no route hints) + secondary actions */}
@@ -689,7 +689,7 @@ export default function Drive3D({ projects, t }) {
         <div className="sr-only" aria-live="polite">{near >= 0 ? t.nearAt + ' ' + t.projects[projects[near].id][0] : ''}</div>
 
         {panel && (
-          <div role="region" aria-label={t.allProjects} className="absolute start-4 top-[15rem] sm:top-[13.8rem] z-30 proj-panel max-h-[calc(100svh-25rem)] sm:max-h-[calc(100svh-26rem)] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 p-3 md:start-12 md:top-[15.5rem]">
+          <div role="region" aria-label={t.allProjects} className="absolute start-4 top-[15rem] sm:top-[13.8rem] z-30 proj-panel max-h-[calc(100svh-25rem)] sm:max-h-[calc(100svh-26rem)] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl border border-[#7aa6c7]/70 bg-[#f4f9fd] shadow-lg shadow-sky-900/20 p-3 md:start-12 md:top-[15.5rem]">
             <p className="px-2 pb-2 text-xs text-zinc-400">{t.panelNote}</p>
             <ul>{projects.map((q, i) => (
               <li key={q.id}><button onClick={() => go(i)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start hover:bg-zinc-800/80">
@@ -700,7 +700,7 @@ export default function Drive3D({ projects, t }) {
         )}
 
         {/* spark toast */}
-        {sparkIdx >= 0 && <div role="status" className="pointer-events-none absolute inset-x-0 top-[13.8rem] z-20 spark-toast flex justify-center px-6 md:top-[15.5rem]"><p className="rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 px-4 py-2 text-center text-sm">✦ {t.sparkFacts[sparkIdx]}</p></div>}
+        {sparkIdx >= 0 && <div role="status" className="pointer-events-none absolute inset-x-0 top-[13.8rem] z-20 spark-toast flex justify-center px-6 md:top-[15.5rem]"><p className="rounded-2xl border border-[#7aa6c7]/70 bg-[#f4f9fd] shadow-lg shadow-sky-900/20 px-4 py-2 text-center text-sm">✦ {t.sparkFacts[sparkIdx]}</p></div>}
 
         {/* touch controls */}
         <div dir="ltr" className="absolute inset-x-0 bottom-5 z-10 touch-ctl items-end justify-between px-4">
@@ -710,21 +710,21 @@ export default function Drive3D({ projects, t }) {
         {/* near prompt */}
         <div className="pointer-events-none absolute inset-x-0 bottom-32 z-10 near-prompt flex justify-center px-4 md:bottom-10">
           {socNear >= 0 && !(cur && open < 0) && open < 0 ? (
-            <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border-2 bg-[#3b2a21] shadow-lg shadow-black/30 px-5 py-3" style={{ borderColor: SOC_COL[SOCIALS[socNear].id] }}>
+            <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border-2 bg-[#f4f9fd] shadow-lg shadow-sky-900/20 px-5 py-3" style={{ borderColor: SOC_COL[SOCIALS[socNear].id] }}>
               <div className="text-lg font-bold md:text-2xl">{SOCIALS[socNear].label}</div>
-              <a href={SOCIALS[socNear].url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-[#1c110c]/70 px-5 py-3 text-sm font-bold text-black shadow-lg shadow-black/30" style={{ background: SOC_COL[SOCIALS[socNear].id] }}>{t.openSocial} ↗ <span className="hidden md:inline" dir="ltr">(Enter)</span></a>
+              <a href={SOCIALS[socNear].url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-[#7aa6c7]/70 px-5 py-3 text-sm font-bold text-black shadow-lg shadow-sky-900/20" style={{ background: SOC_COL[SOCIALS[socNear].id] }}>{t.openSocial} ↗ <span className="hidden md:inline" dir="ltr">(Enter)</span></a>
             </div>
           ) : cur && open < 0 ? (
-            <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border-2 bg-[#3b2a21] shadow-lg shadow-black/30 px-5 py-3" style={{ borderColor: cur.accent }}>
+            <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border-2 bg-[#f4f9fd] shadow-lg shadow-sky-900/20 px-5 py-3" style={{ borderColor: cur.accent }}>
               <div><div className="text-lg font-bold md:text-2xl">{t.projects[cur.id][0]}</div><div className="text-sm text-zinc-300">{t.projects[cur.id][1]}</div></div>
-              <button onClick={() => openAt(near)} className="rounded-full border border-[#1c110c]/70 px-5 py-3 text-sm font-bold text-black shadow-lg shadow-black/30" style={{ background: cur.accent }}>{t.openStation} <span className="hidden md:inline" dir="ltr">(Enter)</span></button>
+              <button onClick={() => openAt(near)} className="rounded-full border border-[#7aa6c7]/70 px-5 py-3 text-sm font-bold text-black shadow-lg shadow-sky-900/20" style={{ background: cur.accent }}>{t.openStation} <span className="hidden md:inline" dir="ltr">(Enter)</span></button>
             </div>
           ) : null}
         </div>
-        {!ready && <div className="absolute inset-0 z-20 grid place-items-center bg-[#140d0a]"><div className="text-center"><div className="mx-auto h-14 w-14 animate-pulse rounded-2xl bg-gold/90" /><p className="mt-4 text-[#f1e2c4]">{t.loading}</p><div className="mx-auto mt-3 h-1.5 w-40 overflow-hidden rounded-full bg-black/40"><div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded-full bg-gold" /></div></div></div>}
+        {!ready && <div className="absolute inset-0 z-20 grid place-items-center bg-[#eaf4fb]"><div className="text-center"><div className="mx-auto h-14 w-14 animate-pulse rounded-2xl bg-gold/90" /><p className="mt-4 text-[#1d3a56]">{t.loading}</p><div className="mx-auto mt-3 h-1.5 w-40 overflow-hidden rounded-full bg-black/40"><div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded-full bg-gold" /></div></div></div>}
 
         {open >= 0 && (
-          <div role="dialog" aria-modal="false" aria-label={t.projects[projects[open].id][0]} className="absolute inset-x-4 bottom-32 z-30 proj-dialog mx-auto max-w-xl rounded-2xl border-2 bg-[#3b2a21] shadow-lg shadow-black/30 p-5 md:bottom-10" style={{ borderColor: projects[open].accent }}>
+          <div role="dialog" aria-modal="false" aria-label={t.projects[projects[open].id][0]} className="absolute inset-x-4 bottom-32 z-30 proj-dialog mx-auto max-w-xl rounded-2xl border-2 bg-[#f4f9fd] shadow-lg shadow-sky-900/20 p-5 md:bottom-10" style={{ borderColor: projects[open].accent }}>
             <div className="flex gap-4">
               <img src={'./img/' + projects[open].img} alt="" className="h-24 w-24 rounded-lg object-cover md:h-32 md:w-32" />
               <div className="min-w-0 flex-1">
@@ -740,8 +740,8 @@ export default function Drive3D({ projects, t }) {
 
         {/* first visit: say what this is and how to drive, then get out of the way */}
         {onb && (
-          <div role="region" aria-label={t.onbTitle} data-onb className="absolute inset-0 z-40 grid place-items-start bg-black/20 p-4 pt-[15rem] md:place-items-center md:bg-black/55 md:pt-4">
-            <div className="w-full max-w-md onb-card rounded-3xl border border-[#1c110c]/70 bg-[#3b2a21]/95 shadow-lg shadow-black/30 p-4 text-center md:bg-[#3b2a21] md:p-6">
+          <div role="region" aria-label={t.onbTitle} data-onb className="absolute inset-0 z-40 grid place-items-start bg-sky-900/10 p-4 pt-[15rem] md:place-items-center md:bg-sky-900/20 md:pt-4">
+            <div className="w-full max-w-md onb-card rounded-3xl border border-[#7aa6c7]/70 bg-[#f4f9fd]/95 shadow-lg shadow-sky-900/20 p-4 text-center md:bg-[#f4f9fd] md:p-6">
               <h2 className="text-xl font-extrabold md:text-2xl">{t.onbTitle}</h2>
               <p className="mt-2 hidden text-zinc-300 md:block">{t.onbSub}</p>
               <div className="mt-3 grid gap-2 text-sm text-zinc-200 md:mt-4">
@@ -750,8 +750,8 @@ export default function Drive3D({ projects, t }) {
                 <p className="text-sm text-zinc-300 onb-touch md:hidden">{t.onbTouch}</p>
               </div>
               <div className="mt-3 flex flex-row gap-2 md:mt-5 md:flex-col"><style>{`[data-onb] button{flex:1}`}</style>
-                <button autoFocus onClick={() => { dismissOnb(); refocus() }} className="rounded-full border border-[#1c110c]/70 bg-gold px-5 py-3 min-h-[48px] font-bold text-black shadow-lg shadow-black/30">{t.start}</button>
-                <button onClick={() => { dismissOnb(); setPanel(true) }} className="rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-5 py-2 min-h-[44px] text-sm shadow-lg shadow-black/30">{t.skipDrive}</button>
+                <button autoFocus onClick={() => { dismissOnb(); refocus() }} className="rounded-full border border-[#7aa6c7]/70 bg-gold px-5 py-3 min-h-[48px] font-bold text-black shadow-lg shadow-sky-900/20">{t.start}</button>
+                <button onClick={() => { dismissOnb(); setPanel(true) }} className="rounded-full border border-[#7aa6c7]/70 bg-[#e1eef8] px-5 py-2 min-h-[44px] text-sm shadow-lg shadow-sky-900/20">{t.skipDrive}</button>
               </div>
             </div>
           </div>
