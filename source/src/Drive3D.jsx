@@ -13,7 +13,7 @@ const SOC_COL = { behance: '#1769ff', tiktok: '#25f4ee', instagram: '#e1306c', f
 const SOC_SPOTS = { behance: [[34, -32], [30, -26], [38, -34]], tiktok: [[-30, -6], [-28, -12], [-34, -2]], instagram: [[44, 10], [48, 6], [40, 12]], facebook: [[-20, 20], [-24, 16], [-16, 24]] }
 const stationPos = (i) => STATIONS[i % STATIONS.length]
 
-export default function Drive3D({ projects, t }) {
+export default function Drive3D({ projects, t, game = false, onExit }) {
   const wrap = useRef(null), mount = useRef(null)
   const keys = useRef({ l: false, r: false, up: false, dn: false })
   const api = useRef({})
@@ -633,7 +633,7 @@ export default function Drive3D({ projects, t }) {
     return () => { disposed = true; cleanup() }
   }, [projects, N, t.name])
 
-  const MAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'dn', s: 'dn', S: 'dn' }
+  const MAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'up', w: 'up', W: 'up', ' ': 'dn', ArrowDown: 'dn', s: 'dn', S: 'dn' }
   const dismissOnb = () => { api.current.wake?.(); if (onbRef.current) { setOnb(false); try { localStorage.setItem('drive-seen', '1') } catch {} } }
   const openAt = (i) => { setOpen(i); setVisited((v) => (v.includes(i) ? v : [...v, i])) }
   const refocus = () => wrap.current?.focus({ preventScroll: true })
@@ -661,8 +661,9 @@ export default function Drive3D({ projects, t }) {
   const chip = 'inline-flex items-center rounded-full border border-[#bcd6ea]/70 bg-[#e9f3fa] px-3 py-1 text-xs text-[#1c3350] shadow-lg shadow-sky-900/10 md:text-sm'
 
   return (
-    <section id="work" aria-label={t.galleryLabel} className={immersive ? 'fixed inset-0 z-[60] h-[100dvh] w-full overflow-hidden bg-black' : 'relative h-[100svh] min-h-[560px] w-full overflow-hidden'}>
+    <section id="work" aria-label={t.galleryLabel} className={game ? 'absolute inset-0 h-full w-full overflow-hidden bg-black' : immersive ? 'fixed inset-0 z-[60] h-[100dvh] w-full overflow-hidden bg-black' : 'relative h-[100svh] min-h-[560px] w-full overflow-hidden'}>
       <a href="#admin" className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-16 focus:z-50 focus:rounded focus:bg-gold focus:px-3 focus:py-1 focus:text-black">{t.skipGame}</a>
+      {game && <button onClick={onExit} className="game-exit rounded-full border border-[#bcd6ea]/70 bg-[#f7fbfe] px-4 py-2 min-h-[40px] text-sm font-bold text-[#1c3350] shadow-lg shadow-sky-900/10" aria-label={t.exitWorld}>✕ {t.exitWorld}</button>}
       <div ref={wrap} tabIndex={0} role="application" aria-label={t.driveLabel}
         onKeyDown={onKey(true)} onKeyUp={onKey(false)} onFocus={() => setEngaged(true)}
         onBlur={() => { setEngaged(false); Object.keys(keys.current).forEach((k) => (keys.current[k] = false)) }}
@@ -682,7 +683,7 @@ export default function Drive3D({ projects, t }) {
           <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'} aria-label={t.home}>↺<span className="hidden md:inline">&nbsp;{t.homeShort}</span></button>
           <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀' : '☾'}<span className="hidden md:inline">&nbsp;{mode === 'day' ? t.dayMode : t.nightMode}</span></button>
           <button onClick={() => { const m = !snd; setSnd(m); try { localStorage.setItem('drive-sound', m ? 'on' : 'off') } catch {}; api.current.wake?.(); api.current.setSound?.(m); refocus() }} aria-pressed={snd} aria-label={snd ? t.soundOff : t.soundOn} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{snd ? '🔊' : '🔇'}</button>
-          <button onClick={() => { const on = !immersive; setImmersive(on); try { if (on) document.documentElement.requestFullscreen?.() ; else if (document.fullscreenElement) document.exitFullscreen?.() } catch {} ; refocus() }} aria-pressed={immersive} aria-label={immersive ? t.exitFull : t.fullscreen} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{immersive ? '⤡' : '⤢'}</button>
+          {!game && <button onClick={() => { const on = !immersive; setImmersive(on); try { if (on) document.documentElement.requestFullscreen?.() ; else if (document.fullscreenElement) document.exitFullscreen?.() } catch {} ; refocus() }} aria-pressed={immersive} aria-label={immersive ? t.exitFull : t.fullscreen} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{immersive ? '⤡' : '⤢'}</button>}
           {knocked && <button onClick={() => { api.current.resetCrates?.(); refocus() }} className={chip + ' hover:border-gold min-h-[44px] px-4 md:min-h-0 md:px-3'}>↻ {t.resetBoxes}</button>}
         </div>
         <p className="pointer-events-none hud-hint absolute end-6 top-24 z-10 hidden max-w-xs text-end text-xs text-zinc-400 md:block">{engaged ? t.keysOn : t.keysOff}</p>
