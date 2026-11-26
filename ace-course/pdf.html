@@ -1,0 +1,9 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحميل PDF - كورس IBM ACE</title>
+<style>body{font:18px/1.8 "Noto Naskh Arabic",Tahoma,sans-serif;margin:0;padding:24px;text-align:center;color:#251f21}button{font:inherit;padding:14px 28px;border-radius:12px;border:0;background:#2a73a6;color:#fff;margin:16px 0}a{color:#2a73a6}</style></head><body>
+<h1>كورس IBM ACE بالمصري</h1><p>ملف PDF كامل (164 صفحة)</p>
+<button id="b">تحميل الـ PDF</button><p id="s"></p><p><a href="./">الرجوع للكورس</a></p>
+<script>
+document.getElementById('b').onclick=async function(){var s=document.getElementById('s');s.textContent='جاري التحميل...';
+try{var p=[];var t='';for(var i=0;i<3;i++){var r=await fetch('ace-pdf.b64.'+i+'.txt');if(!r.ok)throw 0;t+=(await r.text()).trim()}var bin=atob(t),u=new Uint8Array(bin.length);for(var j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);p.push(u);
+var blob=new Blob(p,{type:'application/pdf'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ACE-course-arabic.pdf';document.body.appendChild(a);a.click();s.textContent='تم. افتح الملف من التحميلات.'}catch(e){s.textContent='حصل خطأ، جرب تاني.'}};
+</script></body></html>
