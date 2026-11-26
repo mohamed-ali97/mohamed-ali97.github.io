@@ -13,7 +13,7 @@ const SOC_COL = { behance: '#1769ff', tiktok: '#25f4ee', instagram: '#e1306c', f
 const SOC_SPOTS = { behance: [[34, -32], [30, -26], [38, -34]], tiktok: [[-30, -6], [-28, -12], [-34, -2]], instagram: [[44, 10], [48, 6], [40, 12]], facebook: [[-20, 20], [-24, 16], [-16, 24]] }
 const stationPos = (i) => STATIONS[i % STATIONS.length]
 
-export default function Drive3D({ projects, t, game = false, onExit }) {
+export default function Drive3D({ projects, t, game = false, onExit, preview = false }) {
   const wrap = useRef(null), mount = useRef(null)
   const keys = useRef({ l: false, r: false, up: false, dn: false })
   const api = useRef({})
@@ -26,7 +26,7 @@ export default function Drive3D({ projects, t, game = false, onExit }) {
   const [toast, setToast] = useState('')
   const [onb, setOnb] = useState(() => { try { return !localStorage.getItem('drive-seen') } catch { return true } })
   const [panel, setPanel] = useState(false)
-  const [mode, setModeState] = useState(() => { try { const m = localStorage.getItem('drive-mode'); if (m === 'day' || m === 'night') return m; const h = new Date().getHours(); return h >= 6 && h < 18 ? 'day' : 'night' } catch { return 'night' } })
+  const [mode, setModeState] = useState(() => { try { const m = localStorage.getItem('drive-mode'); if (m === 'day' || m === 'night') return m; return 'day' } catch { return 'day' } })
   const modeRef = useRef(mode); modeRef.current = mode
   const [knocked, setKnocked] = useState(false)
   const [snd, setSnd] = useState(() => { try { return localStorage.getItem('drive-sound') !== 'off' } catch { return true } })
@@ -240,10 +240,10 @@ export default function Drive3D({ projects, t, game = false, onExit }) {
         const init = () => {
           if (ctx) return
           const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return
-          ctx = new AC(); master = ctx.createGain(); master.gain.value = muted ? 0 : .55; master.connect(ctx.destination)
-          filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 300; gain = ctx.createGain(); gain.gain.value = 0
-          osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc2 = ctx.createOscillator(); osc2.type = 'square'
-          const g2 = ctx.createGain(); g2.gain.value = .3; osc.connect(filt); osc2.connect(g2); g2.connect(filt); filt.connect(gain); gain.connect(master); osc.start(); osc2.start()
+          ctx = new AC(); master = ctx.createGain(); master.gain.value = muted ? 0 : .5; master.connect(ctx.destination)
+          filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 220; filt.Q.value = .4; gain = ctx.createGain(); gain.gain.value = 0
+          osc = ctx.createOscillator(); osc.type = 'triangle'; osc2 = ctx.createOscillator(); osc2.type = 'sine'
+          const g2 = ctx.createGain(); g2.gain.value = .5; osc.connect(filt); osc2.connect(g2); g2.connect(filt); filt.connect(gain); gain.connect(master); osc.start(); osc2.start()
           nbuf = ctx.createBuffer(1, ctx.sampleRate * .6, ctx.sampleRate); const ch = nbuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1
         }
         const noise = (type, freq, vol, dur) => {
@@ -256,9 +256,11 @@ export default function Drive3D({ projects, t, game = false, onExit }) {
           setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : .55, ctx.currentTime, .05) },
           update(v, thr) {
             if (!ctx || muted) return
-            const s = Math.min(1, Math.abs(v) / 14), t = ctx.currentTime, f = 46 + s * 66 + (thr ? 9 : 0)
-            osc.frequency.setTargetAtTime(f, t, .09); osc2.frequency.setTargetAtTime(f * .5, t, .09)
-            filt.frequency.setTargetAtTime(240 + s * 900 + (thr ? 260 : 0), t, .1); gain.gain.setTargetAtTime(.04 + s * .15 + (thr ? .035 : 0), t, .12)
+            // calm steady hum: speed is smoothed heavily, no throttle jumps, soft filter
+            this.sm = (this.sm || 0) + (Math.min(1, Math.abs(v) / 14) - (this.sm || 0)) * .06
+            const s = this.sm, t = ctx.currentTime, f = 52 + s * 38
+            osc.frequency.setTargetAtTime(f, t, .35); osc2.frequency.setTargetAtTime(f * .5, t, .35)
+            filt.frequency.setTargetAtTime(190 + s * 260, t, .4); gain.gain.setTargetAtTime(.035 + s * .05, t, .4)
           },
           thud(v) { noise('lowpass', 260, Math.min(.9, .25 + v / 16), .28) },
           crash() { noise('highpass', 2200, .7, .45); noise('bandpass', 900, .5, .3) },
@@ -656,6 +658,7 @@ export default function Drive3D({ projects, t, game = false, onExit }) {
   const btn = 'grid h-[68px] w-[68px] select-none place-items-center rounded-3xl border border-[#bcd6ea]/70 bg-[#e4f1f9]/75 text-3xl text-[#1c3350] shadow-lg shadow-sky-900/10 active:bg-gold active:text-black md:h-12 md:w-12 md:text-xl'
   const sparkIdx = toast ? Number(toast.split(':')[0]) : -1
   useEffect(() => { const f = () => { if (!document.fullscreenElement) setImmersive((v) => (v && document.fullscreenEnabled ? false : v)) }; document.addEventListener('fullscreenchange', f); return () => document.removeEventListener('fullscreenchange', f) }, [])
+  useEffect(() => { const f = () => { try { const m = localStorage.getItem('drive-mode'); if (m === 'day' || m === 'night') { setModeState(m); api.current.setMode?.(m) } } catch {} }; window.addEventListener('drive-mode', f); return () => window.removeEventListener('drive-mode', f) }, [])
   useEffect(() => { document.body.style.overflow = immersive ? 'hidden' : ''; return () => { document.body.style.overflow = '' } }, [immersive])
   useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(''), 4500); return () => clearTimeout(id) }, [toast])
   const chip = 'inline-flex items-center rounded-full border border-[#bcd6ea]/70 bg-[#e9f3fa] px-3 py-1 text-xs text-[#1c3350] shadow-lg shadow-sky-900/10 md:text-sm'
@@ -681,7 +684,7 @@ export default function Drive3D({ projects, t, game = false, onExit }) {
           <span className={chip + ' hidden md:inline-flex'} aria-live="polite">{t.sparks}: <b dir="ltr">{found.length}/{SPARKS.length}</b></span>
           <button onClick={() => setPanel((v) => !v)} aria-expanded={panel} className={chip + ' hover:border-[#2a73a6] min-h-[40px] px-4 md:min-h-0 md:px-3 !bg-[#b9e0f7] !border-[#8cc4e8] font-bold'}>{t.allProjects}</button>
           <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'} aria-label={t.home}>↺<span className="hidden md:inline">&nbsp;{t.homeShort}</span></button>
-          <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀' : '☾'}<span className="hidden md:inline">&nbsp;{mode === 'day' ? t.dayMode : t.nightMode}</span></button>
+          <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); window.dispatchEvent(new Event('drive-mode')); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀' : '☾'}<span className="hidden md:inline">&nbsp;{mode === 'day' ? t.dayMode : t.nightMode}</span></button>
           <button onClick={() => { const m = !snd; setSnd(m); try { localStorage.setItem('drive-sound', m ? 'on' : 'off') } catch {}; api.current.wake?.(); api.current.setSound?.(m); refocus() }} aria-pressed={snd} aria-label={snd ? t.soundOff : t.soundOn} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{snd ? '🔊' : '🔇'}</button>
           {!game && <button onClick={() => { const on = !immersive; setImmersive(on); try { if (on) document.documentElement.requestFullscreen?.() ; else if (document.fullscreenElement) document.exitFullscreen?.() } catch {} ; refocus() }} aria-pressed={immersive} aria-label={immersive ? t.exitFull : t.fullscreen} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{immersive ? '⤡' : '⤢'}</button>}
           {knocked && <button onClick={() => { api.current.resetCrates?.(); refocus() }} className={chip + ' hover:border-gold min-h-[44px] px-4 md:min-h-0 md:px-3'}>↻ {t.resetBoxes}</button>}
