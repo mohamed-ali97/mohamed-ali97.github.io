@@ -21,7 +21,7 @@ const projects = [
   { id: '188645177', img: 'p6.png', accent: '#1a8f6b' },
   { id: '105371039', img: 'p10.jpg', accent: '#8bb31f' },
 ]
-const btn = 'inline-block m-1.5 px-7 py-3 rounded-full border border-[#7aa6c7]/70 font-bold no-underline shadow-lg shadow-sky-900/20 transition hover:-translate-y-0.5'
+const btn = 'inline-block m-1.5 px-7 py-3 rounded-full border border-[#bcd6ea]/70 font-bold no-underline shadow-lg shadow-sky-900/10 transition hover:-translate-y-0.5'
 
 export default function App() {
   const root = useRef(null)
@@ -62,14 +62,14 @@ export default function App() {
         <div className="flex items-center gap-0.5 text-xs text-zinc-300 min-[400px]:gap-2 md:gap-6 md:text-base">
           <a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#work">{t.work}</a><a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#admin">{t.admin}</a><a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#contact">{t.contact}</a>
           <Socials size="h-8 w-8" className="hidden md:flex" />
-          {has3D && <button className="rounded-full border border-[#7aa6c7]/70 bg-[#e1eef8] px-2.5 py-2 min-h-[40px] whitespace-nowrap shadow-lg shadow-sky-900/20 text-xs md:min-h-0 md:py-1 md:px-3 md:text-sm" onClick={() => setListView((v) => !v)}>{listView ? t.view3d : t.listView}</button>}
-          <button className="rounded-full border border-[#7aa6c7]/70 bg-gold px-2.5 py-2 min-h-[40px] whitespace-nowrap text-xs font-bold text-black shadow-lg shadow-sky-900/20 md:min-h-0 md:py-1 md:px-3 md:text-sm" lang={lang === 'en' ? 'ar' : 'en'} onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}>{t.switchTo}</button>
+          {has3D && <button className="rounded-full border border-[#bcd6ea]/70 bg-[#e9f3fa] px-2.5 py-2 min-h-[40px] whitespace-nowrap shadow-lg shadow-sky-900/10 text-xs md:min-h-0 md:py-1 md:px-3 md:text-sm" onClick={() => setListView((v) => !v)}>{listView ? t.view3d : t.listView}</button>}
+          <button className="rounded-full border border-[#bcd6ea]/70 bg-gold px-2.5 py-2 min-h-[40px] whitespace-nowrap text-xs font-bold text-black shadow-lg shadow-sky-900/10 md:min-h-0 md:py-1 md:px-3 md:text-sm" lang={lang === 'en' ? 'ar' : 'en'} onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}>{t.switchTo}</button>
         </div>
       </nav>
 
       {show3D && <Suspense fallback={<div className="grid h-screen place-items-center text-zinc-400">{t.loading}</div>}><Drive3D projects={projects} t={t} /></Suspense>}
       {hasList && <div className={has3D ? 'list-overlay fixed inset-x-0 bottom-0 top-[64px] z-30 overflow-y-auto overscroll-contain bg-ink' : ''} role={has3D ? 'region' : undefined} aria-label={has3D ? t.listView : undefined}>
-        {has3D && <div className="sticky top-0 z-20 flex justify-end bg-ink/90 px-4 py-2 backdrop-blur"><button className="rounded-full border border-[#7aa6c7]/70 bg-gold px-4 py-2 min-h-[40px] text-sm font-bold text-black shadow-lg shadow-sky-900/20" onClick={() => setListView(false)}>{t.closeList} ✕</button></div>}
+        {has3D && <div className="sticky top-0 z-20 flex justify-end bg-ink/90 px-4 py-2 backdrop-blur"><button className="rounded-full border border-[#bcd6ea]/70 bg-gold px-4 py-2 min-h-[40px] text-sm font-bold text-black shadow-lg shadow-sky-900/10" onClick={() => setListView(false)}>{t.closeList} ✕</button></div>}
         <header className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-28 pb-16 text-center">
           <div className="blob-a absolute left-[8%] top-[8%] h-96 w-96 rounded-full bg-gold opacity-30 blur-[90px]" />
           <div className="blob-b absolute bottom-[6%] right-[8%] h-96 w-96 rounded-full bg-teal-500 opacity-30 blur-[90px]" />
@@ -87,7 +87,7 @@ export default function App() {
           <h2 className="mb-12 text-4xl font-bold md:text-5xl">{t.selected}</h2>
           {projects.map((p, i) => (
             <article key={p.id} className="project mb-20 grid items-center gap-6 md:mb-28 md:grid-cols-2 md:gap-12">
-              <button className={'shot cursor-zoom-in overflow-hidden rounded-2xl border-2 border-[#7aa6c7]/70 p-0 shadow-lg shadow-sky-900/20 ' + (i % 2 ? 'md:order-2' : '')}
+              <button className={'shot cursor-zoom-in overflow-hidden rounded-2xl border-2 border-[#bcd6ea]/70 p-0 shadow-lg shadow-sky-900/10 ' + (i % 2 ? 'md:order-2' : '')}
                 style={{ boxShadow: `0 30px 60px -20px ${p.accent}` }} onClick={() => setSel(p)} aria-label={t.projects[p.id][0]}>
                 <img src={'./img/' + p.img} alt={t.projects[p.id][0]} className="block w-full transition duration-500 hover:scale-105" />
               </button>
@@ -102,7 +102,7 @@ export default function App() {
         </main>
       </div>}
 
-      <div className="overflow-hidden border-y border-zinc-800 bg-panel py-4" dir="ltr" aria-hidden="true">
+      <div className="overflow-hidden border-y border-zinc-800 bg-panel py-4 depth-marquee" dir="ltr" aria-hidden="true">
         <div className="animate-marquee flex w-max">
           {[...t.skills, ...t.skills].map((s, i) => (
             <span key={i} className="mx-4 whitespace-nowrap text-2xl font-bold text-zinc-200">{s}<i className="mx-4 not-italic text-gold">✦</i></span>
@@ -110,7 +110,7 @@ export default function App() {
         </div>
       </div>
 
-      <section id="admin" className="mx-auto max-w-5xl px-6 py-24">
+      <div className="depth-band"><section id="admin" className="mx-auto max-w-5xl px-6 py-24">
         <h2 className="mb-12 text-4xl font-bold md:text-5xl">{t.expTitle}</h2>
         <h3 className="mb-2 text-2xl font-bold text-gold">{t.designTitle}</h3>
         <p className="mb-2 max-w-2xl text-zinc-300">{t.designLead}</p>
@@ -141,12 +141,12 @@ export default function App() {
         </ol>
         <div className="mt-6 grid gap-8 md:grid-cols-2">
           <div><h3 className="mb-3 text-xl font-bold">{t.adminSkills}</h3>
-            <ul className="flex flex-wrap gap-2">{t.skillsList.map((x) => <li key={x} className="rounded-full border border-[#7aa6c7]/70 bg-[#e1eef8] px-3 py-1 text-sm text-zinc-100 shadow-lg shadow-sky-900/20">{x}</li>)}</ul></div>
+            <ul className="flex flex-wrap gap-2">{t.skillsList.map((x) => <li key={x} className="rounded-full border border-[#bcd6ea]/70 bg-[#e9f3fa] px-3 py-1 text-sm text-zinc-100 shadow-lg shadow-sky-900/10">{x}</li>)}</ul></div>
           <div><h3 className="mb-3 text-xl font-bold">{t.edu}</h3><p className="text-zinc-300">{t.eduText}</p><p className="mt-2 text-zinc-400">{t.langs}</p></div>
         </div>
-      </section>
+      </section></div>
 
-      <section id="contact" className="bg-panel px-6 py-24 text-center">
+      <section id="contact" className="depth-contact px-6 py-24 text-center">
         <h2 className="mb-2 text-4xl font-bold">{t.contactTitle}</h2>
         <p className="text-zinc-400">{t.contactText}</p>
         <Socials size="h-12 w-12" className="mt-6 justify-center" />
