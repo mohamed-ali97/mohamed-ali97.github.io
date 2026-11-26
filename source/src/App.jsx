@@ -59,11 +59,11 @@ export default function App() {
     <div ref={root}>
       <nav className="fixed inset-x-0 top-0 z-20 flex items-center justify-between px-3 py-3 md:px-8 md:py-4 backdrop-blur bg-ink/60 md:px-8">
         <a href="#work" aria-label="Z" className="flex items-center"><svg viewBox="0 0 64 64" className="h-9 w-9 md:h-10 md:w-10" role="img" aria-hidden="true"><defs><linearGradient id="zrg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffe27a" /><stop offset="1" stopColor="#f0a500" /></linearGradient></defs><rect width="64" height="64" rx="14" fill="#10131c" /><path d="M12 14H52L46 25H12Z" fill="url(#zrg)"/><path d="M18 39H52V50H12Z" fill="url(#zrg)"/><path d="M52 14V25L24 50H12V39L40 14Z" fill="#c98200"/><path d="M52 14L46 25H34L40 14Z" fill="#8a5600"/><path d="M12 50L24 39H18Z" fill="#8a5600"/></svg></a>
-        <div className="flex items-center gap-2 text-xs text-zinc-300 md:gap-6 md:text-base">
-          <a className="inline-flex min-h-[44px] items-center px-1.5 md:min-h-0 md:px-0" href="#work">{t.work}</a><a className="inline-flex min-h-[44px] items-center px-1.5 md:min-h-0 md:px-0" href="#admin">{t.admin}</a><a className="inline-flex min-h-[44px] items-center px-1.5 md:min-h-0 md:px-0" href="#contact">{t.contact}</a>
+        <div className="flex items-center gap-0.5 text-xs text-zinc-300 min-[400px]:gap-2 md:gap-6 md:text-base">
+          <a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#work">{t.work}</a><a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#admin">{t.admin}</a><a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#contact">{t.contact}</a>
           <Socials size="h-8 w-8" className="hidden md:flex" />
-          {has3D && <button className="rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-3 py-2 min-h-[40px] whitespace-nowrap shadow-lg shadow-black/30 text-xs md:min-h-0 md:py-1 md:px-3 md:text-sm" onClick={() => setListView((v) => !v)}>{listView ? t.view3d : t.listView}</button>}
-          <button className="rounded-full border border-[#1c110c]/70 bg-gold px-3 py-2 min-h-[40px] whitespace-nowrap text-xs font-bold text-black shadow-lg shadow-black/30 md:min-h-0 md:py-1 md:px-3 md:text-sm" lang={lang === 'en' ? 'ar' : 'en'} onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}>{t.switchTo}</button>
+          {has3D && <button className="rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-2.5 py-2 min-h-[40px] whitespace-nowrap shadow-lg shadow-black/30 text-xs md:min-h-0 md:py-1 md:px-3 md:text-sm" onClick={() => setListView((v) => !v)}>{listView ? t.view3d : t.listView}</button>}
+          <button className="rounded-full border border-[#1c110c]/70 bg-gold px-2.5 py-2 min-h-[40px] whitespace-nowrap text-xs font-bold text-black shadow-lg shadow-black/30 md:min-h-0 md:py-1 md:px-3 md:text-sm" lang={lang === 'en' ? 'ar' : 'en'} onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}>{t.switchTo}</button>
         </div>
       </nav>
 
