@@ -593,7 +593,7 @@ export default function Drive3D({ projects, t }) {
   const btn = 'grid h-[76px] w-[76px] select-none place-items-center rounded-3xl border border-[#1c110c]/70 bg-[#5a3d2c] text-3xl text-[#fff4de] shadow-lg shadow-black/30 active:bg-gold active:text-black md:h-12 md:w-12 md:text-xl'
   const sparkIdx = toast ? Number(toast.split(':')[0]) : -1
   useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(''), 4500); return () => clearTimeout(id) }, [toast])
-  const chip = 'rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-3 py-1 text-xs text-[#fff4de] shadow-lg shadow-black/30 md:text-sm'
+  const chip = 'inline-flex items-center rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-3 py-1 text-xs text-[#fff4de] shadow-lg shadow-black/30 md:text-sm'
 
   return (
     <section id="work" aria-label={t.galleryLabel} className="relative h-[100svh] min-h-[560px] w-full overflow-hidden">
@@ -606,16 +606,16 @@ export default function Drive3D({ projects, t }) {
         <div ref={mount} className="absolute inset-0" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-56 bg-gradient-to-b from-black/75 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-20 md:px-12 md:pt-24">
-          <p className="text-xs uppercase tracking-[.25em] text-zinc-400">{t.role}</p>
+          <p className="text-xs uppercase tracking-[.2em] text-[#f1e2c4] md:tracking-[.25em]">{t.role}</p>
           <h1 className="mt-1 text-[clamp(1.5rem,4vw,3rem)] font-extrabold leading-none">{t.name}</h1>
         </div>
         {/* discovery counters (no route hints) + secondary actions */}
         <div className="absolute inset-x-0 top-[9.7rem] z-10 flex flex-wrap items-center gap-2 px-6 md:top-40 md:px-12">
           <span className={chip} aria-live="polite">{t.discovered}: <b dir="ltr">{visited.length}/{N}</b></span>
           <span className={chip} aria-live="polite">{t.sparks}: <b dir="ltr">{found.length}/{SPARKS.length}</b></span>
-          <button onClick={() => setPanel((v) => !v)} aria-expanded={panel} className={chip + ' hover:border-gold'}>{t.allProjects}</button>
-          <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold'} aria-label={t.home}>↺ {t.homeShort}</button>
-          <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[44px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀ ' + t.dayMode : '☾ ' + t.nightMode}</button>
+          <button onClick={() => setPanel((v) => !v)} aria-expanded={panel} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{t.allProjects}</button>
+          <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'} aria-label={t.home}>↺ {t.homeShort}</button>
+          <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀ ' + t.dayMode : '☾ ' + t.nightMode}</button>
           {knocked && <button onClick={() => { api.current.resetCrates?.(); refocus() }} className={chip + ' hover:border-gold min-h-[44px] px-4 md:min-h-0 md:px-3'}>↻ {t.resetBoxes}</button>}
         </div>
         <p className="pointer-events-none absolute end-6 top-24 z-10 hidden max-w-xs text-end text-xs text-zinc-400 md:block">{engaged ? t.keysOn : t.keysOff}</p>
@@ -654,7 +654,7 @@ export default function Drive3D({ projects, t }) {
             </div>
           ) : null}
         </div>
-        {!ready && <p className="absolute inset-0 z-20 grid place-items-center text-zinc-400">{t.loading}</p>}
+        {!ready && <div className="absolute inset-0 z-20 grid place-items-center bg-[#140d0a]"><div className="text-center"><div className="mx-auto h-14 w-14 animate-pulse rounded-2xl bg-gold/90" /><p className="mt-4 text-[#f1e2c4]">{t.loading}</p><div className="mx-auto mt-3 h-1.5 w-40 overflow-hidden rounded-full bg-black/40"><div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded-full bg-gold" /></div></div></div>}
 
         {open >= 0 && (
           <div role="dialog" aria-modal="false" aria-label={t.projects[projects[open].id][0]} className="absolute inset-x-4 bottom-32 z-30 mx-auto max-w-xl rounded-2xl border-2 bg-[#3b2a21] shadow-lg shadow-black/30 p-5 md:bottom-10" style={{ borderColor: projects[open].accent }}>
@@ -673,18 +673,18 @@ export default function Drive3D({ projects, t }) {
 
         {/* first visit: say what this is and how to drive, then get out of the way */}
         {onb && (
-          <div role="region" aria-label={t.onbTitle} data-onb className="absolute inset-0 z-40 grid place-items-center bg-black/55 p-4">
-            <div className="w-full max-w-md rounded-3xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 p-6 text-center">
-              <h2 className="text-2xl font-extrabold">{t.onbTitle}</h2>
-              <p className="mt-2 text-zinc-300">{t.onbSub}</p>
-              <div className="mt-4 grid gap-2 text-sm text-zinc-200">
+          <div role="region" aria-label={t.onbTitle} data-onb className="absolute inset-0 z-40 grid place-items-start bg-black/20 p-4 pt-[15rem] md:place-items-center md:bg-black/55 md:pt-4">
+            <div className="w-full max-w-md rounded-3xl border border-[#1c110c]/70 bg-[#3b2a21]/95 shadow-lg shadow-black/30 p-4 text-center md:bg-[#3b2a21] md:p-6">
+              <h2 className="text-xl font-extrabold md:text-2xl">{t.onbTitle}</h2>
+              <p className="mt-2 hidden text-zinc-300 md:block">{t.onbSub}</p>
+              <div className="mt-3 grid gap-2 text-sm text-zinc-200 md:mt-4">
                 <p className="hidden md:block" dir="ltr"><kbd className="rounded border px-2 py-0.5">W</kbd> <kbd className="rounded border px-2 py-0.5">A</kbd> <kbd className="rounded border px-2 py-0.5">S</kbd> <kbd className="rounded border px-2 py-0.5">D</kbd> / arrows <span className="text-zinc-400">·</span> <kbd className="rounded border px-2 py-0.5">Enter</kbd> <span className="text-zinc-400">·</span> <kbd className="rounded border px-2 py-0.5">R</kbd></p>
                 <p className="hidden md:block text-zinc-400">{t.onbKeys}</p>
-                <p className="md:hidden text-zinc-400">{t.onbTouch}</p>
+                <p className="text-sm text-zinc-300 md:hidden">{t.onbTouch}</p>
               </div>
-              <div className="mt-5 flex flex-col gap-2">
-                <button autoFocus onClick={() => { dismissOnb(); refocus() }} className="rounded-full border border-[#1c110c]/70 bg-gold px-5 py-3 font-bold text-black shadow-lg shadow-black/30">{t.start}</button>
-                <button onClick={() => { dismissOnb(); setPanel(true) }} className="rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-5 py-2 text-sm shadow-lg shadow-black/30">{t.skipDrive}</button>
+              <div className="mt-3 flex flex-row gap-2 md:mt-5 md:flex-col"><style>{`[data-onb] button{flex:1}`}</style>
+                <button autoFocus onClick={() => { dismissOnb(); refocus() }} className="rounded-full border border-[#1c110c]/70 bg-gold px-5 py-3 min-h-[48px] font-bold text-black shadow-lg shadow-black/30">{t.start}</button>
+                <button onClick={() => { dismissOnb(); setPanel(true) }} className="rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-5 py-2 min-h-[44px] text-sm shadow-lg shadow-black/30">{t.skipDrive}</button>
               </div>
             </div>
           </div>
