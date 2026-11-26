@@ -74,3 +74,17 @@ body{background:radial-gradient(70% 45% at 12% 8%,#e4f2fc,transparent 70%),radia
 .game-land .hud-hint{display:none!important}
 .game-land .touch-ctl{display:flex!important}
 .game-exit{position:absolute;inset-block-start:.6rem;inset-inline-start:.6rem;z-index:60}
+
+/* night theme for the normal page */
+html.night{--color-ink:#0c1522;--color-panel:#132238;--color-gold:#2d5a86;
+ --color-zinc-100:#e4eef8;--color-zinc-200:#cfdeec;--color-zinc-300:#b2c6da;--color-zinc-400:#93abc2;--color-zinc-500:#7690a8;--color-zinc-600:#506a84;--color-zinc-700:#2a4058;--color-zinc-800:#1b2e45;--color-zinc-900:#14233a;--color-zinc-950:#0c1522;color-scheme:dark}
+html.night body{background:linear-gradient(180deg,#0a111c,#0c1522 45%,#102036)}
+html.night h1,html.night h2,html.night h3{text-shadow:0 1px 10px rgba(0,0,0,.6)}
+html.night .text-gold{color:#8cc4e8!important}
+html.night .border-gold{border-color:#3f6d98!important}
+html.night nav.fixed{background:rgba(12,21,34,.72)!important}
+
+/* live preview slice on the phone first screen: canvas only, no HUD, no input */
+.world-preview [data-onb],.world-preview .hud-fade,.world-preview .hud-title,.world-preview .hud-chips,.world-preview .touch-ctl,.world-preview .near-prompt,.world-preview .game-exit,.world-preview .proj-panel,.world-preview .proj-dialog,.world-preview .spark-toast,.world-preview .hud-hint,.world-preview button:not(.play-pill),.world-preview a{display:none!important}
+.world-preview section#work{height:100%!important;min-height:0!important}
+
