@@ -30,8 +30,12 @@ export default function App() {
   useEffect(() => { document.documentElement.lang = lang; document.documentElement.dir = t.dir; localStorage.setItem('lang', lang) }, [lang, t.dir])
   const [sel, setSel] = useState(null)
   const [has3D] = useState(canShow3D)
+  const [phone] = useState(() => { try { return window.matchMedia('(pointer: coarse)').matches && Math.min(window.screen.width, window.screen.height) < 700 } catch { return false } })
+  const [game, setGame] = useState(false)
+  const [vp, setVp] = useState({ w: 0, h: 0 })
+  const inlineWorld = has3D && !phone
   const [listView, setListView] = useState(false)
-  const show3D = has3D
+  const show3D = inlineWorld
 
   useEffect(() => {
     if (!sel) return
@@ -45,7 +49,7 @@ export default function App() {
     gsap.from('.hero-fade', { opacity: 0, y: 24, duration: 0.8, stagger: 0.12, delay: 0.7, ease: 'power2.out' })
     gsap.to('.blob-a', { x: 70, y: 40, duration: 7, repeat: -1, yoyo: true, ease: 'sine.inOut' })
     gsap.to('.blob-b', { x: -60, y: -40, duration: 9, repeat: -1, yoyo: true, ease: 'sine.inOut' })
-    if (has3D) return
+    if (inlineWorld) return
     gsap.utils.toArray('.project').forEach((el) => {
       gsap.from(el, { opacity: 0, y: 70, duration: 0.9, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 85%' } })
       gsap.fromTo(el.querySelector('.shot'), { yPercent: 6 }, { yPercent: -6, ease: 'none', scrollTrigger: { trigger: el, scrub: true } })
@@ -53,37 +57,62 @@ export default function App() {
   }, { scope: root, dependencies: [listView] })
 
   const nameParts = t.name.split(' ')
-  const hasList = !has3D || listView
-  useEffect(() => { document.body.style.overflow = has3D && listView ? 'hidden' : ''; return () => { document.body.style.overflow = '' } }, [has3D, listView])
+  const hasList = !inlineWorld || listView
+  const scrollY0 = useRef(0); const fsOn = useRef(false)
+
+  const enterGame = () => {
+    scrollY0.current = window.scrollY
+    try { document.documentElement.requestFullscreen?.()?.catch?.(() => {}) } catch {}
+    try { screen.orientation?.lock?.('landscape')?.catch?.(() => {}) } catch {}
+    setVp({ w: window.innerWidth, h: window.innerHeight }); setGame(true)
+  }
+  const exitGame = () => {
+    try { if (document.fullscreenElement) document.exitFullscreen?.() } catch {}
+    try { screen.orientation?.unlock?.() } catch {}
+    setGame(false); setTimeout(() => window.scrollTo(0, scrollY0.current), 30)
+  }
+  useEffect(() => {
+    if (!game) return
+    const f = () => setVp({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', f); window.addEventListener('orientationchange', f)
+    const fs = () => { if (!document.fullscreenElement && fsOn.current) { fsOn.current = false } else if (document.fullscreenElement) fsOn.current = true }
+    document.addEventListener('fullscreenchange', fs)
+    return () => { window.removeEventListener('resize', f); window.removeEventListener('orientationchange', f); document.removeEventListener('fullscreenchange', fs) }
+  }, [game])
+  const rotated = game && vp.h > vp.w
+  const gameStyle = rotated ? { position: 'fixed', top: 0, left: 0, width: vp.h, height: vp.w, transform: `translateX(${vp.w}px) rotate(90deg)`, transformOrigin: 'top left' } : { position: 'fixed', inset: 0 }
+  useEffect(() => { document.documentElement.style.overflow = (inlineWorld && listView) || game ? 'hidden' : ''; return () => { document.documentElement.style.overflow = '' } }, [inlineWorld, listView, game])
   return (
     <div ref={root}>
+      {game && <div className={'game-land z-[100] bg-black overscroll-none'} style={{ ...gameStyle, touchAction: 'none' }} role="dialog" aria-modal="true" aria-label={t.playWorld}><Suspense fallback={<div className="grid h-full place-items-center text-zinc-300">{t.loading}</div>}><Drive3D projects={projects} t={t} game onExit={exitGame} /></Suspense></div>}
       <nav className="fixed inset-x-0 top-0 z-20 flex items-center justify-between px-3 py-3 md:px-8 md:py-4 backdrop-blur bg-ink/60 md:px-8">
         <a href="#work" aria-label="Z" className="flex items-center"><svg viewBox="0 0 64 64" className="h-9 w-9 md:h-10 md:w-10" role="img" aria-hidden="true"><defs><linearGradient id="zrg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffe27a" /><stop offset="1" stopColor="#f0a500" /></linearGradient></defs><rect width="64" height="64" rx="14" fill="#10131c" /><path d="M12 14H52L46 25H12Z" fill="url(#zrg)"/><path d="M18 39H52V50H12Z" fill="url(#zrg)"/><path d="M52 14V25L24 50H12V39L40 14Z" fill="#c98200"/><path d="M52 14L46 25H34L40 14Z" fill="#8a5600"/><path d="M12 50L24 39H18Z" fill="#8a5600"/></svg></a>
         <div className="flex items-center gap-0.5 text-xs text-zinc-300 min-[400px]:gap-2 md:gap-6 md:text-base">
           <a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#work">{t.work}</a><a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#admin">{t.admin}</a><a className="inline-flex min-h-[44px] items-center px-1 md:min-h-0 md:px-0" href="#contact">{t.contact}</a>
           <Socials size="h-8 w-8" className="hidden md:flex" />
-          {has3D && <button className="rounded-full border border-[#bcd6ea]/70 bg-[#e9f3fa] px-2.5 py-2 min-h-[40px] whitespace-nowrap shadow-lg shadow-sky-900/10 text-xs md:min-h-0 md:py-1 md:px-3 md:text-sm" onClick={() => setListView((v) => !v)}>{listView ? t.view3d : t.listView}</button>}
+          {inlineWorld && <button className="rounded-full border border-[#bcd6ea]/70 bg-[#e9f3fa] px-2.5 py-2 min-h-[40px] whitespace-nowrap shadow-lg shadow-sky-900/10 text-xs md:min-h-0 md:py-1 md:px-3 md:text-sm" onClick={() => setListView((v) => !v)}>{listView ? t.view3d : t.listView}</button>}
           <button className="rounded-full border border-[#bcd6ea]/70 bg-gold px-2.5 py-2 min-h-[40px] whitespace-nowrap text-xs font-bold text-black shadow-lg shadow-sky-900/10 md:min-h-0 md:py-1 md:px-3 md:text-sm" lang={lang === 'en' ? 'ar' : 'en'} onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}>{t.switchTo}</button>
         </div>
       </nav>
 
       {show3D && <Suspense fallback={<div className="grid h-screen place-items-center text-zinc-400">{t.loading}</div>}><Drive3D projects={projects} t={t} /></Suspense>}
-      {hasList && <div className={has3D ? 'list-overlay fixed inset-x-0 bottom-0 top-[64px] z-30 overflow-y-auto overscroll-contain bg-ink' : ''} role={has3D ? 'region' : undefined} aria-label={has3D ? t.listView : undefined}>
-        {has3D && <div className="sticky top-0 z-20 flex justify-end bg-ink/90 px-4 py-2 backdrop-blur"><button className="rounded-full border border-[#bcd6ea]/70 bg-gold px-4 py-2 min-h-[40px] text-sm font-bold text-black shadow-lg shadow-sky-900/10" onClick={() => setListView(false)}>{t.closeList} ✕</button></div>}
+      {hasList && <div className={inlineWorld ? 'list-overlay fixed inset-x-0 bottom-0 top-[64px] z-30 overflow-y-auto overscroll-contain bg-ink' : ''} role={inlineWorld ? 'region' : undefined} aria-label={inlineWorld ? t.listView : undefined}>
+        {inlineWorld && <div className="sticky top-0 z-20 flex justify-end bg-ink/90 px-4 py-2 backdrop-blur"><button className="rounded-full border border-[#bcd6ea]/70 bg-gold px-4 py-2 min-h-[40px] text-sm font-bold text-black shadow-lg shadow-sky-900/10" onClick={() => setListView(false)}>{t.closeList} ✕</button></div>}
         <header className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-28 pb-16 text-center">
           <div className="blob-a absolute left-[8%] top-[8%] h-96 w-96 rounded-full bg-gold opacity-30 blur-[90px]" />
           <div className="blob-b absolute bottom-[6%] right-[8%] h-96 w-96 rounded-full bg-teal-500 opacity-30 blur-[90px]" />
+          {has3D && phone && <button onClick={enterGame} className="relative z-10 mb-4 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[#bcd6ea]/80 bg-[#f7fbfe] px-4 py-2 text-sm font-bold text-[#1c3350] shadow-lg shadow-sky-900/10" aria-label={t.playWorld + ' / ' + (lang === 'en' ? 'العالم' : 'World')}><span aria-hidden="true">▶</span>{lang === 'en' ? 'Play world / العالم' : 'العالم / Play world'}</button>}
           <p className="hero-fade relative z-10 text-sm uppercase tracking-[.2em] text-zinc-400">{t.role}</p>
           <h1 className="relative z-10 my-3 md:whitespace-nowrap text-[clamp(2.8rem,10vw,7.5rem)] font-extrabold leading-none">
             {nameParts.map((w) => <span key={w} className="block overflow-hidden pb-[.08em] md:mx-[.14em] md:inline-block"><span className="hero-word block">{w}</span></span>)}
           </h1>
           <p className="hero-fade relative z-10 max-w-xl text-lg text-zinc-300">{t.lead}</p>
           <div className="hero-fade relative z-10 mt-5">
-            <a className={btn + ' bg-gold text-black'} href={has3D ? '#work-list' : '#work'}>{t.seeWork}</a>
+            <a className={btn + ' bg-gold text-black'} href={inlineWorld ? '#work-list' : '#work'}>{t.seeWork}</a>
             <a className={btn + ' border border-gold text-gold'} href="https://behance.net/mohamedali31">Behance</a>
           </div>
         </header>
-        <main id={has3D ? 'work-list' : 'work'} className="mx-auto max-w-6xl px-5 pt-24 pb-10">
+        <main id={inlineWorld ? 'work-list' : 'work'} className="mx-auto max-w-6xl px-5 pt-24 pb-10">
           <h2 className="mb-12 text-4xl font-bold md:text-5xl">{t.selected}</h2>
           {projects.map((p, i) => (
             <article key={p.id} className="project mb-20 grid items-center gap-6 md:mb-28 md:grid-cols-2 md:gap-12">
