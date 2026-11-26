@@ -29,6 +29,8 @@ export default function Drive3D({ projects, t }) {
   const [mode, setModeState] = useState(() => { try { const m = localStorage.getItem('drive-mode'); if (m === 'day' || m === 'night') return m; const h = new Date().getHours(); return h >= 6 && h < 18 ? 'day' : 'night' } catch { return 'night' } })
   const modeRef = useRef(mode); modeRef.current = mode
   const [knocked, setKnocked] = useState(false)
+  const [snd, setSnd] = useState(() => { try { return localStorage.getItem('drive-sound') !== 'off' } catch { return true } })
+  const [immersive, setImmersive] = useState(false)
   const [socNear, setSocNear] = useState(-1)
   const socNearRef = useRef(-1)
   const onbRef = useRef(onb); onbRef.current = onb
@@ -92,7 +94,7 @@ export default function Drive3D({ projects, t }) {
       for (let i = 0; i < 72; i++) { const a = (i / 72) * Math.PI * 2; const d = new THREE.Mesh(dashGeo, dashMat); d.position.set(Math.sin(a) * R, .035, Math.cos(a) * R); d.rotation.y = a + Math.PI / 2; scene.add(d) }
 
       // plaza lamps, then a city and forest scattered around the whole world; nothing is placed on a station or the plaza
-      const lampGlows = []
+      const lampGlows = [], lampList = []
       const lampMat = new THREE.MeshBasicMaterial({ color: 0xffe4a8 }), poleMat = Toon({ color: 0x4a5068 })
       for (let i = 0; i < 12; i++) {
         const a = ((i + .5) / 12) * Math.PI * 2, r = R + 4.6
@@ -100,12 +102,13 @@ export default function Drive3D({ projects, t }) {
         const pole = new THREE.Mesh(new THREE.CylinderGeometry(.07, .09, 3.2, 6), poleMat); pole.position.y = 1.6; g.add(pole)
         const head = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 6), lampMat); head.position.y = 3.3; g.add(head)
         const lg = new THREE.Mesh(new THREE.CircleGeometry(3, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd890, transparent: true, opacity: .3, depthWrite: false, blending: THREE.AdditiveBlending })); lg.position.y = .06; g.add(lg); lampGlows.push(lg.material)
-        scene.add(g)
+        scene.add(g); lampList.push({ g, x: g.position.x, z: g.position.z })
       }
       let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
       const clear = (x, z, m) => Math.hypot(x, z) > R + 9 && STATIONS.every(([sx, sz]) => Math.hypot(x - sx, z - sz) > m) && SPARKS.every(([sx, sz]) => Math.hypot(x - sx, z - sz) > Math.min(m, 9))
       const winMat = new THREE.MeshBasicMaterial({ color: 0xffd98a })
       const colliders = []
+      lampList.forEach((l) => { l.col = [l.x, l.z, .3, l]; colliders.push(l.col) })
       const bMats = []
       const facade = (() => {
         const c = document.createElement('canvas'), e = document.createElement('canvas'); c.width = c.height = e.width = e.height = 128
@@ -208,7 +211,64 @@ export default function Drive3D({ projects, t }) {
         const g = new THREE.Group(), inner = new THREE.Mesh(crateGeo, Toon({ map: crateTex, color: tints[i % 5], roughness: .9 })); g.add(inner); g.position.set(x, 0, z); scene.add(g)
         crates.push({ g, inner, hx: x, hz: z, x, z, vx: 0, vz: 0, y: 0, vy: 0, tilt: 0, tv: 0, rot: 0, spin: 0, gy: 0 })
       })
-      const resetCrates = () => { crates.forEach((c) => { Object.assign(c, { x: c.hx, z: c.hz, vx: 0, vz: 0, y: 0, vy: 0, tilt: 0, tv: 0, rot: 0, spin: 0, gy: 0 }); c.g.position.set(c.hx, 0, c.hz); c.g.rotation.y = 0; c.inner.position.y = 0; c.inner.rotation.set(0, 0, 0) }); setKnocked(false) }
+      // ---- shatter pieces (stylized, not rigid-body) + synthesized engine / impact sounds (no music) ----
+      const shardGeo = new THREE.BoxGeometry(.2, .2, .07)
+      const shards = Array.from({ length: small ? 24 : 40 }, () => { const m = new THREE.Mesh(shardGeo, new THREE.MeshBasicMaterial({ color: 0xffffff })); m.visible = false; scene.add(m); return { m, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, life: 0 } })
+      let shardHead = 0
+      const burst = (x, y, z, color, n, power) => {
+        fx.shatters = (fx.shatters || 0) + 1
+        for (let q = 0; q < n; q++) {
+          const s = shards[shardHead]; shardHead = (shardHead + 1) % shards.length
+          s.m.material.color.set(color); s.m.position.set(x + (Math.random() - .5) * .6, y + Math.random() * .6, z + (Math.random() - .5) * .6)
+          s.m.scale.setScalar(.6 + Math.random() * 1.1)
+          const a = Math.random() * 6.283, sp = (1.5 + Math.random() * 3.5) * power
+          s.vx = Math.cos(a) * sp + Math.sin(st.h) * st.v * .35; s.vz = Math.sin(a) * sp + Math.cos(st.h) * st.v * .35; s.vy = 2.5 + Math.random() * 4 * power
+          s.rx = (Math.random() - .5) * 14; s.ry = (Math.random() - .5) * 14; s.rz = (Math.random() - .5) * 14; s.life = 1.6 + Math.random() * .6; s.m.visible = true
+        }
+      }
+      const stepShards = (dt) => shards.forEach((s) => {
+        if (!s.m.visible) return
+        s.life -= dt; if (s.life <= 0) { s.m.visible = false; return }
+        s.vy -= 16 * dt; s.m.position.x += s.vx * dt; s.m.position.y += s.vy * dt; s.m.position.z += s.vz * dt
+        if (s.m.position.y < .08) { s.m.position.y = .08; s.vy = Math.abs(s.vy) * .3; s.vx *= .7; s.vz *= .7; s.rx *= .6; s.ry *= .6; s.rz *= .6 }
+        s.m.rotation.x += s.rx * dt; s.m.rotation.y += s.ry * dt; s.m.rotation.z += s.rz * dt
+        if (s.life < .4) s.m.scale.multiplyScalar(1 - dt * 2.2)
+      })
+      const audio = (() => {
+        let ctx = null, osc, osc2, gain, filt, master, nbuf, muted = false
+        try { muted = localStorage.getItem('drive-sound') === 'off' } catch {}
+        const init = () => {
+          if (ctx) return
+          const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return
+          ctx = new AC(); master = ctx.createGain(); master.gain.value = muted ? 0 : .55; master.connect(ctx.destination)
+          filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 300; gain = ctx.createGain(); gain.gain.value = 0
+          osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc2 = ctx.createOscillator(); osc2.type = 'square'
+          const g2 = ctx.createGain(); g2.gain.value = .3; osc.connect(filt); osc2.connect(g2); g2.connect(filt); filt.connect(gain); gain.connect(master); osc.start(); osc2.start()
+          nbuf = ctx.createBuffer(1, ctx.sampleRate * .6, ctx.sampleRate); const ch = nbuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1
+        }
+        const noise = (type, freq, vol, dur) => {
+          if (!ctx || muted) return
+          const src = ctx.createBufferSource(); src.buffer = nbuf; const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; const g = ctx.createGain(); const t = ctx.currentTime
+          g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur); src.connect(f); f.connect(g); g.connect(master); src.start(t); src.stop(t + dur + .05)
+        }
+        return {
+          wake() { init(); if (ctx && ctx.state === 'suspended') ctx.resume() },
+          setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : .55, ctx.currentTime, .05) },
+          update(v, thr) {
+            if (!ctx || muted) return
+            const s = Math.min(1, Math.abs(v) / 14), t = ctx.currentTime, f = 46 + s * 66 + (thr ? 9 : 0)
+            osc.frequency.setTargetAtTime(f, t, .09); osc2.frequency.setTargetAtTime(f * .5, t, .09)
+            filt.frequency.setTargetAtTime(240 + s * 900 + (thr ? 260 : 0), t, .1); gain.gain.setTargetAtTime(.04 + s * .15 + (thr ? .035 : 0), t, .12)
+          },
+          thud(v) { noise('lowpass', 260, Math.min(.9, .25 + v / 16), .28) },
+          crash() { noise('highpass', 2200, .7, .45); noise('bandpass', 900, .5, .3) },
+        }
+      })()
+      const breakLamp = (l) => { l.g.visible = false; l.col[2] = -9; burst(l.x, 1.2, l.z, 0x4a5068, 12, 1); burst(l.x, 3.2, l.z, 0xffe4a8, 6, 1); audio.crash() }
+      const breakCrate = (c) => { c.broken = true; c.g.visible = false; burst(c.x, .6, c.z, 0xc4915a, 14, 1.1); burst(c.x, .8, c.z, 0xa9773f, 8, .9); audio.crash() }
+      const resetCrates = () => { lampList.forEach((l) => { l.g.visible = true; l.col[2] = .3 }); shards.forEach((s) => { s.m.visible = false })
+        crates.forEach((c) => { c.broken = false; c.g.visible = true })
+         crates.forEach((c) => { Object.assign(c, { x: c.hx, z: c.hz, vx: 0, vz: 0, y: 0, vy: 0, tilt: 0, tv: 0, rot: 0, spin: 0, gy: 0 }); c.g.position.set(c.hx, 0, c.hz); c.g.rotation.y = 0; c.inner.position.y = 0; c.inner.rotation.set(0, 0, 0) }); setKnocked(false) }
       let knockedFlag = false, shake = 0, bumpCd = 0, splashAcc = 0, dustAcc = 0, ripT = 0
 
       // social landmarks: big icon boards in the world; approaching one shows an Open button (never opens by itself)
@@ -390,7 +450,7 @@ export default function Drive3D({ projects, t }) {
         place(px, pz, Math.atan2(sx - px, sz - pz))
       }
       const home = () => { place(0, 0, 0.5); resetCrates() }
-      api.current = { gotoStation, home, state: () => ({ ...st }), place, resetCrates, setMode: (m) => { modeTo = m === 'day' ? 1 : 0 } }
+      api.current = { wake: () => audio.wake(), setSound: (m) => audio.setMuted(!m), gotoStation, home, state: () => ({ ...st }), place, resetCrates, setMode: (m) => { modeTo = m === 'day' ? 1 : 0 } }
       window.__driveState = () => ({ ...st }); window.__gatePulse = () => gates.map((q) => q.pulse); window.__driveWorld = { gates: gates.map((q) => ({ x: q.gx, z: q.gz, ax: q.axx, az: q.axz })), stations: STATIONS, sparks: SPARKS, puddles, crates, socials: socialObjs.map((o) => ({ x: o.x, z: o.z, id: o.l.id })) }; window.__driveMode = (m, instant) => { modeTo = m === 'day' ? 1 : 0; if (instant) { modeK = modeTo; paint(modeK) } }; window.__drivePlace = (x, z, h) => { place(x, z, h); camPos.set(x - Math.sin(h) * 9, 5, z - Math.cos(h) * 9) }
       // opening view: car faces station 0 from the middle
       place(0, 0, 0.5); camPos.set(-Math.sin(.5) * 9, 5, -Math.cos(.5) * 9)
@@ -406,7 +466,7 @@ export default function Drive3D({ projects, t }) {
 
       let last = performance.now(), t0 = last
       const bump = (v) => {
-        shake = Math.min(1, v / 12); bumpCd = .4; fx.bumps++
+        shake = Math.min(1, v / 12); bumpCd = .4; fx.bumps++; audio.thud(v); try { navigator.vibrate?.(25) } catch {}
         const fxv = Math.sin(st.h), fzv = Math.cos(st.h)
         for (let q = 0; q < (small ? 6 : 10); q++) dustP.emit(st.x + fxv * 1.8 + (Math.random() - .5) * 1.4, .3, st.z + fzv * 1.8 + (Math.random() - .5) * 1.4, (Math.random() - .5) * 2.4, .8 + Math.random(), (Math.random() - .5) * 2.4, .7 + Math.random() * .5, 1.2)
       }
@@ -424,11 +484,12 @@ export default function Drive3D({ projects, t }) {
         steerS += (steer - steerS) * (1 - Math.exp(-dt * 9))
         st.h += steerS * 2.1 * (1 - .3 * Math.min(1, Math.abs(st.v) / 14)) * Math.max(-1, Math.min(1, st.v / 5)) * dt
         st.x += Math.sin(st.h) * st.v * dt; st.z += Math.cos(st.h) * st.v * dt
+        audio.update(st.v, k.up)
         for (let i = 0; i < colliders.length; i++) {
           const c = colliders[i], cx = st.x - c[0], cz = st.z - c[1]
           if (Math.abs(cx) > 9 || Math.abs(cz) > 9) continue
           const dd = Math.hypot(cx, cz), lim = c[2] + 1.5
-          if (dd < lim && dd > 1e-4) { if (st.v > 2.5 && bumpCd <= 0) bump(st.v); st.x = c[0] + (cx / dd) * lim; st.z = c[1] + (cz / dd) * lim; st.v *= Math.max(0, 1 - 6 * dt) }
+          if (dd < lim && dd > 1e-4) { if (c[3] && st.v > 5) { breakLamp(c[3]); st.v *= .88; fx.bumps++; shake = Math.min(1, st.v / 12); continue } if (st.v > 2.5 && bumpCd <= 0) bump(st.v); st.x = c[0] + (cx / dd) * lim; st.z = c[1] + (cz / dd) * lim; st.v *= Math.max(0, 1 - 6 * dt) }
         }
         const d = Math.hypot(st.x, st.z)
         if (d > EDGE) { st.x *= EDGE / d; st.z *= EDGE / d; st.v *= .5 }
@@ -454,14 +515,16 @@ export default function Drive3D({ projects, t }) {
           }
           ripples.forEach((r) => { if (r.age > .9) { r.m.visible = false; return } r.age += dt; r.m.scale.set(.4 + r.age * 3.6, 1, .4 + r.age * 3.6); r.m.material.opacity = Math.max(0, 1 - r.age / .9) * .8 })
           waterP.step(dt, 11, .3, .95); dustP.step(dt, -.4, 2.2, .5)
+          stepShards(dt)
           // crates
           const cps = [[st.x + fxv * 1.1, st.z + fzv * 1.1], [st.x - fxv * .9, st.z - fzv * .9]], hitR = 1.9
           for (let i = 0; i < crates.length; i++) {
-            const c = crates[i]
+            const c = crates[i]; if (c.broken) continue
             for (let q = 0; q < 2; q++) {
               const dx = c.x - cps[q][0], dz = c.z - cps[q][1], dd = Math.hypot(dx, dz)
               if (dd < hitR && dd > 1e-4) {
                 const nx = dx / dd, nz = dz / dd, rel = st.v * (fxv * nx + fzv * nz)
+                if (rel > 6.5) { breakCrate(c); st.v *= .9; if (!knockedFlag) { knockedFlag = true; setKnocked(true) } break }
                 if (rel > .5) {
                   const spd = rel * 1.2 + 1.4
                   c.vx = nx * spd; c.vz = nz * spd; c.vy = 1.6 + rel * .3; c.tv = 2.6 + rel * .55; c.spin = (Math.random() - .5) * 6; c.gy = Math.atan2(nx, nz)
@@ -472,7 +535,7 @@ export default function Drive3D({ projects, t }) {
             }
           }
           for (let i = 0; i < crates.length; i++) {
-            const c = crates[i]
+            const c = crates[i]; if (c.broken) continue
             c.x += c.vx * dt; c.z += c.vz * dt
             const fr = Math.exp(-dt * (c.y > .02 ? .3 : 2.4)); c.vx *= fr; c.vz *= fr
             c.y += c.vy * dt; c.vy -= 18 * dt; if (c.y < 0) { c.y = 0; c.vy = c.vy < -3 ? -c.vy * .3 : 0 }
@@ -571,7 +634,7 @@ export default function Drive3D({ projects, t }) {
   }, [projects, N, t.name])
 
   const MAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'dn', s: 'dn', S: 'dn' }
-  const dismissOnb = () => { if (onbRef.current) { setOnb(false); try { localStorage.setItem('drive-seen', '1') } catch {} } }
+  const dismissOnb = () => { api.current.wake?.(); if (onbRef.current) { setOnb(false); try { localStorage.setItem('drive-seen', '1') } catch {} } }
   const openAt = (i) => { setOpen(i); setVisited((v) => (v.includes(i) ? v : [...v, i])) }
   const refocus = () => wrap.current?.focus({ preventScroll: true })
   const onKey = (down) => (e) => {
@@ -592,11 +655,13 @@ export default function Drive3D({ projects, t }) {
   const cur = open >= 0 ? projects[open] : near >= 0 ? projects[near] : null
   const btn = 'grid h-[76px] w-[76px] select-none place-items-center rounded-3xl border border-[#1c110c]/70 bg-[#5a3d2c] text-3xl text-[#fff4de] shadow-lg shadow-black/30 active:bg-gold active:text-black md:h-12 md:w-12 md:text-xl'
   const sparkIdx = toast ? Number(toast.split(':')[0]) : -1
+  useEffect(() => { const f = () => { if (!document.fullscreenElement) setImmersive((v) => (v && document.fullscreenEnabled ? false : v)) }; document.addEventListener('fullscreenchange', f); return () => document.removeEventListener('fullscreenchange', f) }, [])
+  useEffect(() => { document.body.style.overflow = immersive ? 'hidden' : ''; return () => { document.body.style.overflow = '' } }, [immersive])
   useEffect(() => { if (!toast) return; const id = setTimeout(() => setToast(''), 4500); return () => clearTimeout(id) }, [toast])
   const chip = 'inline-flex items-center rounded-full border border-[#1c110c]/70 bg-[#4d362a] px-3 py-1 text-xs text-[#fff4de] shadow-lg shadow-black/30 md:text-sm'
 
   return (
-    <section id="work" aria-label={t.galleryLabel} className="relative h-[100svh] min-h-[560px] w-full overflow-hidden">
+    <section id="work" aria-label={t.galleryLabel} className={immersive ? 'fixed inset-0 z-[60] h-[100dvh] w-full overflow-hidden bg-black' : 'relative h-[100svh] min-h-[560px] w-full overflow-hidden'}>
       <a href="#admin" className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-16 focus:z-50 focus:rounded focus:bg-gold focus:px-3 focus:py-1 focus:text-black">{t.skipGame}</a>
       <div ref={wrap} tabIndex={0} role="application" aria-label={t.driveLabel}
         onKeyDown={onKey(true)} onKeyUp={onKey(false)} onFocus={() => setEngaged(true)}
@@ -604,25 +669,27 @@ export default function Drive3D({ projects, t }) {
         onPointerDown={(e) => { if (e.target === wrap.current || e.target === mount.current) refocus() }}
         className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-gold">
         <div ref={mount} className="absolute inset-0" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-56 bg-gradient-to-b from-black/75 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-20 md:px-12 md:pt-24">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[5] h-64 hud-fade bg-gradient-to-b from-black/75 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-20 hud-title md:px-12 md:pt-24">
           <p className="text-xs uppercase tracking-[.2em] text-[#f1e2c4] md:tracking-[.25em]">{t.role}</p>
           <h1 className="mt-1 text-[clamp(1.5rem,4vw,3rem)] font-extrabold leading-none">{t.name}</h1>
         </div>
         {/* discovery counters (no route hints) + secondary actions */}
-        <div className="absolute inset-x-0 top-[9.7rem] z-10 flex flex-wrap items-center gap-2 px-6 md:top-40 md:px-12">
+        <div className="absolute inset-x-0 top-[9.7rem] z-10 hud-chips flex flex-wrap items-center gap-2 px-6 md:top-[11.25rem] md:px-12">
           <span className={chip} aria-live="polite">{t.discovered}: <b dir="ltr">{visited.length}/{N}</b></span>
           <span className={chip} aria-live="polite">{t.sparks}: <b dir="ltr">{found.length}/{SPARKS.length}</b></span>
           <button onClick={() => setPanel((v) => !v)} aria-expanded={panel} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{t.allProjects}</button>
           <button onClick={() => { api.current.home?.(); refocus() }} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'} aria-label={t.home}>↺ {t.homeShort}</button>
           <button onClick={() => { const m = mode === 'day' ? 'night' : 'day'; setModeState(m); try { localStorage.setItem('drive-mode', m) } catch {} ; api.current.setMode?.(m); refocus() }} aria-pressed={mode === 'day'} aria-label={t.toggleMode} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{mode === 'day' ? '☀ ' + t.dayMode : '☾ ' + t.nightMode}</button>
+          <button onClick={() => { const m = !snd; setSnd(m); try { localStorage.setItem('drive-sound', m ? 'on' : 'off') } catch {}; api.current.wake?.(); api.current.setSound?.(m); refocus() }} aria-pressed={snd} aria-label={snd ? t.soundOff : t.soundOn} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{snd ? '🔊' : '🔇'}</button>
+          <button onClick={() => { const on = !immersive; setImmersive(on); try { if (on) document.documentElement.requestFullscreen?.() ; else if (document.fullscreenElement) document.exitFullscreen?.() } catch {} ; refocus() }} aria-pressed={immersive} aria-label={immersive ? t.exitFull : t.fullscreen} className={chip + ' hover:border-gold min-h-[40px] px-4 md:min-h-0 md:px-3'}>{immersive ? '⤡' : '⤢'}</button>
           {knocked && <button onClick={() => { api.current.resetCrates?.(); refocus() }} className={chip + ' hover:border-gold min-h-[44px] px-4 md:min-h-0 md:px-3'}>↻ {t.resetBoxes}</button>}
         </div>
-        <p className="pointer-events-none absolute end-6 top-24 z-10 hidden max-w-xs text-end text-xs text-zinc-400 md:block">{engaged ? t.keysOn : t.keysOff}</p>
+        <p className="pointer-events-none hud-hint absolute end-6 top-24 z-10 hidden max-w-xs text-end text-xs text-zinc-400 md:block">{engaged ? t.keysOn : t.keysOff}</p>
         <div className="sr-only" aria-live="polite">{near >= 0 ? t.nearAt + ' ' + t.projects[projects[near].id][0] : ''}</div>
 
         {panel && (
-          <div role="region" aria-label={t.allProjects} className="absolute start-4 top-[15rem] sm:top-[13.8rem] z-30 max-h-[calc(100svh-25rem)] sm:max-h-[calc(100svh-24rem)] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 p-3 md:start-12 md:top-[13.5rem]">
+          <div role="region" aria-label={t.allProjects} className="absolute start-4 top-[15rem] sm:top-[13.8rem] z-30 proj-panel max-h-[calc(100svh-25rem)] sm:max-h-[calc(100svh-26rem)] w-[calc(100%-2rem)] max-w-sm overflow-y-auto rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 p-3 md:start-12 md:top-[15.5rem]">
             <p className="px-2 pb-2 text-xs text-zinc-400">{t.panelNote}</p>
             <ul>{projects.map((q, i) => (
               <li key={q.id}><button onClick={() => go(i)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start hover:bg-zinc-800/80">
@@ -633,15 +700,15 @@ export default function Drive3D({ projects, t }) {
         )}
 
         {/* spark toast */}
-        {sparkIdx >= 0 && <div role="status" className="pointer-events-none absolute inset-x-0 top-[13.8rem] z-20 flex justify-center px-6 md:top-[14rem]"><p className="rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 px-4 py-2 text-center text-sm">✦ {t.sparkFacts[sparkIdx]}</p></div>}
+        {sparkIdx >= 0 && <div role="status" className="pointer-events-none absolute inset-x-0 top-[13.8rem] z-20 spark-toast flex justify-center px-6 md:top-[15.5rem]"><p className="rounded-2xl border border-[#1c110c]/70 bg-[#3b2a21] shadow-lg shadow-black/30 px-4 py-2 text-center text-sm">✦ {t.sparkFacts[sparkIdx]}</p></div>}
 
         {/* touch controls */}
-        <div dir="ltr" className="absolute inset-x-0 bottom-5 z-10 flex items-end justify-between px-4 md:hidden">
+        <div dir="ltr" className="absolute inset-x-0 bottom-5 z-10 touch-ctl items-end justify-between px-4">
           <div className="flex gap-3"><button aria-label={t.left} className={btn} {...hold('l')}>◀</button><button aria-label={t.right} className={btn} {...hold('r')}>▶</button></div>
           <div className="flex items-end gap-3"><button aria-label={t.brake} className={btn} {...hold('dn')}>■</button><button aria-label={t.gas} className={btn + ' !h-[92px] !w-[92px] !bg-gold/85 !text-black'} {...hold('up')}>▲</button></div>
         </div>
         {/* near prompt */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-32 z-10 flex justify-center px-4 md:bottom-10">
+        <div className="pointer-events-none absolute inset-x-0 bottom-32 z-10 near-prompt flex justify-center px-4 md:bottom-10">
           {socNear >= 0 && !(cur && open < 0) && open < 0 ? (
             <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border-2 bg-[#3b2a21] shadow-lg shadow-black/30 px-5 py-3" style={{ borderColor: SOC_COL[SOCIALS[socNear].id] }}>
               <div className="text-lg font-bold md:text-2xl">{SOCIALS[socNear].label}</div>
@@ -657,7 +724,7 @@ export default function Drive3D({ projects, t }) {
         {!ready && <div className="absolute inset-0 z-20 grid place-items-center bg-[#140d0a]"><div className="text-center"><div className="mx-auto h-14 w-14 animate-pulse rounded-2xl bg-gold/90" /><p className="mt-4 text-[#f1e2c4]">{t.loading}</p><div className="mx-auto mt-3 h-1.5 w-40 overflow-hidden rounded-full bg-black/40"><div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded-full bg-gold" /></div></div></div>}
 
         {open >= 0 && (
-          <div role="dialog" aria-modal="false" aria-label={t.projects[projects[open].id][0]} className="absolute inset-x-4 bottom-32 z-30 mx-auto max-w-xl rounded-2xl border-2 bg-[#3b2a21] shadow-lg shadow-black/30 p-5 md:bottom-10" style={{ borderColor: projects[open].accent }}>
+          <div role="dialog" aria-modal="false" aria-label={t.projects[projects[open].id][0]} className="absolute inset-x-4 bottom-32 z-30 proj-dialog mx-auto max-w-xl rounded-2xl border-2 bg-[#3b2a21] shadow-lg shadow-black/30 p-5 md:bottom-10" style={{ borderColor: projects[open].accent }}>
             <div className="flex gap-4">
               <img src={'./img/' + projects[open].img} alt="" className="h-24 w-24 rounded-lg object-cover md:h-32 md:w-32" />
               <div className="min-w-0 flex-1">
@@ -674,13 +741,13 @@ export default function Drive3D({ projects, t }) {
         {/* first visit: say what this is and how to drive, then get out of the way */}
         {onb && (
           <div role="region" aria-label={t.onbTitle} data-onb className="absolute inset-0 z-40 grid place-items-start bg-black/20 p-4 pt-[15rem] md:place-items-center md:bg-black/55 md:pt-4">
-            <div className="w-full max-w-md rounded-3xl border border-[#1c110c]/70 bg-[#3b2a21]/95 shadow-lg shadow-black/30 p-4 text-center md:bg-[#3b2a21] md:p-6">
+            <div className="w-full max-w-md onb-card rounded-3xl border border-[#1c110c]/70 bg-[#3b2a21]/95 shadow-lg shadow-black/30 p-4 text-center md:bg-[#3b2a21] md:p-6">
               <h2 className="text-xl font-extrabold md:text-2xl">{t.onbTitle}</h2>
               <p className="mt-2 hidden text-zinc-300 md:block">{t.onbSub}</p>
               <div className="mt-3 grid gap-2 text-sm text-zinc-200 md:mt-4">
-                <p className="hidden md:block" dir="ltr"><kbd className="rounded border px-2 py-0.5">W</kbd> <kbd className="rounded border px-2 py-0.5">A</kbd> <kbd className="rounded border px-2 py-0.5">S</kbd> <kbd className="rounded border px-2 py-0.5">D</kbd> / arrows <span className="text-zinc-400">·</span> <kbd className="rounded border px-2 py-0.5">Enter</kbd> <span className="text-zinc-400">·</span> <kbd className="rounded border px-2 py-0.5">R</kbd></p>
-                <p className="hidden md:block text-zinc-400">{t.onbKeys}</p>
-                <p className="text-sm text-zinc-300 md:hidden">{t.onbTouch}</p>
+                <p className="hidden md:block onb-keys" dir="ltr"><kbd className="rounded border px-2 py-0.5">W</kbd> <kbd className="rounded border px-2 py-0.5">A</kbd> <kbd className="rounded border px-2 py-0.5">S</kbd> <kbd className="rounded border px-2 py-0.5">D</kbd> / arrows <span className="text-zinc-400">·</span> <kbd className="rounded border px-2 py-0.5">Enter</kbd> <span className="text-zinc-400">·</span> <kbd className="rounded border px-2 py-0.5">R</kbd></p>
+                <p className="hidden md:block onb-keys text-zinc-400">{t.onbKeys}</p>
+                <p className="text-sm text-zinc-300 onb-touch md:hidden">{t.onbTouch}</p>
               </div>
               <div className="mt-3 flex flex-row gap-2 md:mt-5 md:flex-col"><style>{`[data-onb] button{flex:1}`}</style>
                 <button autoFocus onClick={() => { dismissOnb(); refocus() }} className="rounded-full border border-[#1c110c]/70 bg-gold px-5 py-3 min-h-[48px] font-bold text-black shadow-lg shadow-black/30">{t.start}</button>
