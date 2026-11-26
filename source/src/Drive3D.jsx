@@ -451,7 +451,7 @@ export default function Drive3D({ projects, t }) {
       }
       const home = () => { place(0, 0, 0.5); resetCrates() }
       api.current = { wake: () => audio.wake(), setSound: (m) => audio.setMuted(!m), gotoStation, home, state: () => ({ ...st }), place, resetCrates, setMode: (m) => { modeTo = m === 'day' ? 1 : 0 } }
-      window.__driveState = () => ({ ...st }); window.__gatePulse = () => gates.map((q) => q.pulse); window.__driveWorld = { gates: gates.map((q) => ({ x: q.gx, z: q.gz, ax: q.axx, az: q.axz })), stations: STATIONS, sparks: SPARKS, puddles, crates, socials: socialObjs.map((o) => ({ x: o.x, z: o.z, id: o.l.id })) }; window.__driveMode = (m, instant) => { modeTo = m === 'day' ? 1 : 0; if (instant) { modeK = modeTo; paint(modeK) } }; window.__drivePlace = (x, z, h) => { place(x, z, h); camPos.set(x - Math.sin(h) * 9, 5, z - Math.cos(h) * 9) }
+      window.__crates = () => crates.map((c) => [+c.x.toFixed(1), +c.y.toFixed(2), +c.tilt.toFixed(2), +c.vy.toFixed(2)]); window.__driveState = () => ({ ...st }); window.__gatePulse = () => gates.map((q) => q.pulse); window.__driveWorld = { gates: gates.map((q) => ({ x: q.gx, z: q.gz, ax: q.axx, az: q.axz })), stations: STATIONS, sparks: SPARKS, puddles, crates, socials: socialObjs.map((o) => ({ x: o.x, z: o.z, id: o.l.id })) }; window.__driveMode = (m, instant) => { modeTo = m === 'day' ? 1 : 0; if (instant) { modeK = modeTo; paint(modeK) } }; window.__drivePlace = (x, z, h) => { place(x, z, h); camPos.set(x - Math.sin(h) * 9, 5, z - Math.cos(h) * 9) }
       // opening view: car faces station 0 from the middle
       place(0, 0, 0.5); camPos.set(-Math.sin(.5) * 9, 5, -Math.cos(.5) * 9)
 
@@ -538,7 +538,7 @@ export default function Drive3D({ projects, t }) {
             const c = crates[i]; if (c.broken) continue
             c.x += c.vx * dt; c.z += c.vz * dt
             const fr = Math.exp(-dt * (c.y > .02 ? .3 : 2.4)); c.vx *= fr; c.vz *= fr
-            c.y += c.vy * dt; c.vy -= 18 * dt; if (c.y < 0) { c.y = 0; c.vy = c.vy < -3 ? -c.vy * .3 : 0 }
+            const air = c.y > 0 || c.vy > 0; c.y += c.vy * dt; if (air) c.vy -= 18 * dt; if (c.y < 0) { c.y = 0; c.vy = c.vy < -3 ? -c.vy * .3 : 0 }
             c.tilt = Math.max(0, Math.min(1.5708, c.tilt + c.tv * dt)); c.tv *= Math.exp(-dt * 1.3)
             const moving = Math.hypot(c.vx, c.vz) > .5 || c.y > .02
             if (!moving && Math.abs(c.tv) < .4) { const tgt = c.tilt > .8 ? 1.5708 : 0; c.tilt += (tgt - c.tilt) * (1 - Math.exp(-dt * 7)) }
